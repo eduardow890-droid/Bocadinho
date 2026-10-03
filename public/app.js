@@ -170,7 +170,7 @@ async function enviarPedido(){
 			else if(chave&&$(chave))marcar($(chave));
 			return;
 		}
-		try{sessionStorage.setItem(CHAVE,d.id)}catch(e){}
+		try{localStorage.setItem(CHAVE,d.id)}catch(e){}
 		mostrarPix(d);
 	}catch(e){
 		$('erro').textContent='Sem conexão. Verifique sua internet e tente de novo.';
@@ -261,7 +261,7 @@ async function consultarStatus(){
 		clearInterval(timerRelogio);
 		if(STATUS_FINAIS.has(d.status)){
 			clearInterval(timerPoll);
-			try{sessionStorage.removeItem(CHAVE)}catch(e){}
+			try{localStorage.removeItem(CHAVE)}catch(e){}
 			$('pix-novo').hidden=false;
 		}
 	}catch(e){/* tenta de novo no próximo ciclo */}
@@ -291,7 +291,7 @@ async function cancelarPedido(){
 		$('pix-cancelar').hidden=true;
 		$('pix-novo').hidden=false;
 		clearInterval(timerPoll);
-		try{sessionStorage.removeItem(CHAVE)}catch(e){}
+		try{localStorage.removeItem(CHAVE)}catch(e){}
 	}catch(e){
 		$('pix-status').textContent=e.message;
 		btn.disabled=false;
@@ -320,15 +320,15 @@ $('pix-novo').addEventListener('click',()=>{
 
 async function retomarPedido(){
 	let id=null;
-	try{id=sessionStorage.getItem(CHAVE)}catch(e){}
+	try{id=localStorage.getItem(CHAVE)}catch(e){}
 	if(!id)return;
 	try{
 		const r=await fetch('/api/pedidos/'+encodeURIComponent(id));
-		if(!r.ok){sessionStorage.removeItem(CHAVE);return;}
+		if(!r.ok){localStorage.removeItem(CHAVE);return;}
 		const d=await r.json();
 		if(d.status==='pendente'&&d.pix)mostrarPix(d);
 		else if(!STATUS_FINAIS.has(d.status))mostrarPix(d);
-		else sessionStorage.removeItem(CHAVE);
+		else localStorage.removeItem(CHAVE);
 	}catch(e){}
 }
 

@@ -65,8 +65,8 @@
 
       <section>
         <h2>6. Armazenamento no navegador e acompanhamento</h2>
-        <p>O site não utiliza cookies próprios para publicidade ou rastreamento. Para permitir que você retome o acompanhamento durante a sessão do navegador, o identificador do pedido fica no armazenamento de sessão (<em>sessionStorage</em>), que é diferente de um cookie e é removido ao encerrar a sessão ou ao finalizar o pedido.</p>
-        <p>O identificador funciona como uma chave para consultar o status, total e, enquanto o pedido estiver pendente, os dados Pix. Não o publique nem o compartilhe com terceiros. Na área administrativa, o navegador também mantém o token de acesso em armazenamento de sessão.</p>
+        <p>O site não utiliza cookies próprios para publicidade ou rastreamento. Para permitir que você retome o acompanhamento no mesmo navegador, inclusive depois de fechar e reabrir a página, o identificador do pedido fica no armazenamento local (<em>localStorage</em>), que é diferente de um cookie. O site remove essa chave quando detecta que o pedido terminou, foi cancelado ou expirou; se o pedido ainda estiver pendente, ela é mantida para permitir a retomada.</p>
+        <p>O identificador funciona como uma chave para consultar o status, total e, enquanto o pedido estiver pendente, os dados Pix. Não o publique nem o compartilhe com terceiros. Em dispositivos compartilhados, outras pessoas com acesso ao mesmo navegador podem retomar o acompanhamento. Na área administrativa, o navegador mantém o token de acesso apenas durante a sessão.</p>
       </section>
 
       <section>
