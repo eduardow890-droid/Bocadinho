@@ -32,6 +32,7 @@ function restringirAdminPorIp(req, res, next) {
 
   const ip = (req.ip || '').replace(/^::ffff:/, '').toLowerCase();
   if (!ipsAdminPermitidos.has(ip)) {
+    console.warn('[admin] acesso bloqueado; IP recebido:', ip || '(indisponível)');
     return res.status(403).type('text/plain').send('Acesso restrito.');
   }
   next();
