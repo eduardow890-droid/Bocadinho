@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Administração | Bocadinho</title>
+  <link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body>
+  <main class="shell">
+    <section id="login-view" class="panel login-panel" aria-labelledby="login-title">
+      <div class="brand-mark">B</div>
+      <p class="eyebrow">Bocadinho</p>
+      <h1 id="login-title">Área de pedidos</h1>
+      <p class="muted">Acesso restrito à equipe da loja.</p>
+      <form id="login-form" novalidate>
+        <label for="token">Token administrativo</label>
+        <input id="token" type="password" autocomplete="current-password" required>
+        <p id="login-error" class="message error" role="alert" hidden></p>
+        <button class="button primary" type="submit">Entrar</button>
+      </form>
+    </section>
+
+    <section id="app-view" hidden aria-labelledby="app-title">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Bocadinho</p>
+          <h1 id="app-title">Pedidos</h1>
+        </div>
+        <div class="top-actions">
+          <button id="sound-button" class="button secondary" type="button" aria-pressed="false">Ativar som</button>
+          <button id="logout-button" class="button secondary" type="button">Sair</button>
+        </div>
+      </header>
+
+      <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+
+      <section class="summary-grid" aria-label="Resumo dos pedidos">
+        <article class="summary-card"><span>Pagos</span><strong id="count-pago">0</strong></article>
+        <article class="summary-card"><span>Em preparo</span><strong id="count-em_preparo">0</strong></article>
+        <article class="summary-card"><span>Enviados</span><strong id="count-enviado">0</strong></article>
+        <article class="summary-card"><span>Pendentes</span><strong id="count-pendente">0</strong></article>
+        <article class="summary-card alert-card"><span>Revisar</span><strong id="count-revisar">0</strong></article>
+        <article class="summary-card total-card"><span>Pago hoje</span><strong id="paid-today">R$ 0,00</strong></article>
+      </section>
+
+      <section class="toolbar" aria-label="Filtros de pedidos">
+        <label class="filter-label" for="status-filter">Status
+          <select id="status-filter">
+            <option value="pago">Pagos</option>
+            <option value="em_preparo">Em preparo</option>
+            <option value="enviado">Enviados</option>
+            <option value="pendente">Pendentes</option>
+            <option value="revisar">Revisar</option>
+            <option value="estornado">Estornados</option>
+            <option value="concluido">Concluídos</option>
+            <option value="">Todos</option>
+          </select>
+        </label>
+        <label class="search-label" for="search">Buscar por nome ou telefone
+          <input id="search" type="search" autocomplete="off" placeholder="Digite para filtrar">
+        </label>
+        <button id="refresh-button" class="button secondary" type="button">Atualizar</button>
+      </section>
+
+      <p id="connection-message" class="message" role="status" aria-live="polite" hidden></p>
+      <section id="orders" class="orders" aria-live="polite" aria-busy="false"></section>
+    </section>
+  </main>
+  <script src="/admin/admin.js" defer></script>
+</body>
+</html>

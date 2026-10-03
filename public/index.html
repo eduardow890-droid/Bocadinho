@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bocadinho | Cookies e trufas artesanais</title>
+<meta name="description" content="Cookies e trufas artesanais feitos para adoçar seu momento. Monte seu pedido e envie pelo WhatsApp.">
+<meta property="og:title" content="Bocadinho | Cookies e trufas artesanais">
+<meta property="og:description" content="Pequenos doces, grandes vontades. Faça seu pedido pelo WhatsApp.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#995A32">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css"></head><body>
+<nav class="site-nav" aria-label="Navegação principal"><a href="#cardapio">Cardápio</a><a href="#pedido">Monte seu pedido</a><a href="https://wa.me/5521985929831" target="_blank" rel="noopener">WhatsApp</a></nav>
+<section class="hero"><h1>BOCADINHO</h1><a class="btn" href="#pedido">Peça o seu!</a></section>
+
+<section class="vontade"><div class="l"><div><h2>Deu vontade?</h2></div><a class="btn" href="#cardapio">Ver cardápio</a></div><img loading="lazy" decoding="async" src="assets/photo-2.jpg" alt="Cookie artesanal com gotas de chocolate e flor de sal"></section>
+
+<section id="cardapio"><div class="tem"><img loading="lazy" decoding="async" src="assets/photo-3.jpg" alt="Trufas de chocolate"><div class="row"><h2>O que tem no bocadinho?</h2><p>Pequenos doces, grandes vontades.</p></div></div>
+<div class="combos"><h2>Cookies, trufas e combinações deliciosas para adoçar seu dia.</h2>
+<div class="cards"><div class="card"><img loading="lazy" decoding="async" src="assets/photo-4.jpg" alt="Cookies"><div><h3>COOKIES</h3><p>Cookies artesanais, douradinhos por fora e macios por dentro.</p></div></div>
+<div class="card"><img loading="lazy" decoding="async" src="assets/photo-5.jpg" alt="Trufas"><div><h3>TRUFAS</h3><p>Trufas cremosas, cobertas com chocolate e feitas para se lambuzar.</p></div></div></div><a class="btn cta" href="#pedido">Fazer meu pedido</a></div></section>
+
+<section class="como"><h2 class="t">Como pedir</h2><div class="cc">
+<div class="c"><span>💳</span><h3>Pagamentos</h3><p>Pix e outras formas de pagamento disponíveis no momento do pedido. O pedido é confirmado após a identificação do pagamento.</p></div>
+<div class="c"><span>🛵</span><h3>Entregas</h3><p>Via Uber Envios. O cliente paga o valor do Uber Envios, da loja até a sua casa, conforme a distância.</p></div>
+<div class="c"><span>📝</span><h3>Pedidos</h3><p>Escolha seus produtos, informe o endereço e aguarde a confirmação do pedido. O prazo de preparo será informado no momento da compra.</p></div></div></section>
+
+<section class="pedido" id="pedido"><h2 class="t">Monte seu pedido</h2><p class="sub">Escolha os produtos, preencha seus dados e pague na hora com Pix.</p>
+<div class="ped-grid"><div id="items"></div>
+<div class="form">
+<div id="dados">
+<label for="nome">Seu nome *</label><input type="text" id="nome" autocomplete="name" maxlength="80" placeholder="Digite seu nome">
+<label for="telefone">WhatsApp / telefone *</label><input type="tel" id="telefone" autocomplete="tel" inputmode="tel" maxlength="20" placeholder="(21) 99999-9999">
+<label for="email">E-mail *</label><input type="email" id="email" autocomplete="email" maxlength="120" placeholder="voce@email.com">
+<fieldset><legend>Como prefere receber?</legend><div class="radios"><label><input type="radio" name="tipo" value="entrega" checked> Entrega</label><label><input type="radio" name="tipo" value="retirada"> Retirada</label></div></fieldset>
+<div id="endwrap"><fieldset class="endereco-fields"><legend>Endereço de entrega</legend><label for="rua">Rua *</label><input type="text" id="rua" autocomplete="address-line1" maxlength="120" placeholder="Nome da rua"><div class="endereco-grid"><div><label for="numero">Número *</label><input type="text" id="numero" inputmode="numeric" maxlength="20" placeholder="123"></div><div><label for="complemento">Complemento</label><input type="text" id="complemento" autocomplete="address-line2" maxlength="100" placeholder="Apto, casa"></div></div><label for="regiao">Bairro *</label><input type="text" id="regiao" autocomplete="address-level3" maxlength="80" placeholder="Ex.: Copacabana"><label for="cidade">Cidade *</label><input type="text" id="cidade" autocomplete="address-level2" maxlength="80" placeholder="Ex.: Rio de Janeiro"></fieldset></div><p class="retirada-ajuda" id="retirada-ajuda" hidden>Na retirada, o endereço não é necessário. Aguarde a confirmação para receber as instruções do local.</p>
+<label for="obs">Observação</label><textarea id="obs" rows="3" maxlength="300" placeholder="Ex.: sem castanhas, presente, horário preferido..."></textarea>
+<div class="resumo" id="resumo" role="status" aria-live="polite" aria-atomic="true"></div>
+<div class="erro" id="erro" role="alert" aria-live="assertive"></div>
+<p class="checkout-etapa" aria-label="Etapa 1 de 2">1. Revise os dados do pedido → 2. Gere o Pix</p><button type="button" class="btn" id="enviar">Revisar e pagar com Pix</button>
+<p class="aviso">Nossos produtos podem conter leite, glúten, ovos, amendoim e castanhas. Informe alergias na observação. Na entrega, o cliente paga o Uber Envios diretamente, da loja até sua casa; valor e prazo são combinados pelo WhatsApp. O pedido é confirmado automaticamente após o pagamento do Pix.</p>
+<p class="aviso">Ao informar seus dados, consulte nossa <a href="/privacidade.html">Política de Privacidade</a>.</p>
+</div>
+
+<div class="pix" id="pix" hidden>
+<h3>Pague com Pix</h3>
+<div id="pix-corpo">
+<img id="pix-qr" alt="QR Code do Pix" width="220" height="220">
+<p id="pix-valores">Total: <b id="pix-total"></b></p>
+<label for="pix-code">Pix copia e cola</label>
+<textarea id="pix-code" readonly rows="3"></textarea>
+<button type="button" class="btn" id="pix-copiar">Copiar código Pix</button>
+<p class="pix-ajuda">Depois de pagar, mantenha esta página aberta para acompanhar o status do pedido.</p>
+<button type="button" class="btn pix-cancelar" id="pix-cancelar">Cancelar pedido</button>
+<p class="pix-tempo" id="pix-tempo"></p>
+</div>
+<div class="pix-status-box" role="status" aria-live="polite" aria-atomic="true">
+<p class="pix-status" id="pix-status">Aguardando pagamento</p>
+<p class="pix-status-detail" id="pix-status-detail">Escaneie o QR Code ou use o Pix copia e cola.</p>
+<ol class="pix-etapas" id="pix-etapas" aria-label="Etapas do pedido">
+<li data-status="pago">Pagamento confirmado</li><li data-status="em_preparo">Em preparo</li><li data-status="enviado">Enviado</li><li data-status="concluido">Concluído</li>
+</ol>
+</div>
+<button type="button" class="btn" id="pix-novo" hidden>Fazer novo pedido</button>
+</div>
+</div></div></section>
+
+<section class="aten"><div><div class="a"><h2>Atendimento</h2></div><div class="a b" style="margin-top:16px">Dúvidas ou pedidos personalizados? Fale com a Bocadinho pelo WhatsApp ou Instagram.</div><a class="btn wa" href="https://wa.me/5521985929831" target="_blank" rel="noopener">Falar no WhatsApp</a></div><img loading="lazy" decoding="async" src="assets/photo-6.jpg" alt="Pilha de cookies"></section>
+
+<section class="contato"><div class="l"><div><h2><svg width="34" height="34" viewBox="0 0 24 24" fill="#8B3A14"><path d="M12 0l2 8 8-3-5 7 7 3-8 2 3 8-7-5-7 5 3-8-8-2 7-3-5-7 8 3z"/></svg><span>SIGA A GENTE NO INSTA!</span></h2><p class="s" style="font-weight:400;margin-top:32px"><a href="https://instagram.com/bocadinh0" target="_blank" rel="noopener">@bocadinh0</a><br><a href="mailto:bocadinhocookie@gmail.com">bocadinhocookie@gmail.com</a></p></div>
+<div><div class="s">Social media</div><div class="ic"><a href="https://instagram.com/bocadinh0" target="_blank" rel="noopener" aria-label="Instagram"><svg viewBox="0 0 24 24"><path d="M7 2h10a5 5 0 015 5v10a5 5 0 01-5 5H7a5 5 0 01-5-5V7a5 5 0 015-5zm0 2a3 3 0 00-3 3v10a3 3 0 003 3h10a3 3 0 003-3V7a3 3 0 00-3-3zm5 3.5a4.5 4.5 0 110 9 4.5 4.5 0 010-9zm0 2a2.5 2.5 0 100 5 2.5 2.5 0 000-5zM17.5 6a1 1 0 110 2 1 1 0 010-2z"/></svg></a><a href="https://wa.me/5521985929831" target="_blank" rel="noopener" aria-label="WhatsApp"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 00-8.6 15L2 22l5.1-1.3A10 10 0 1012 2zm0 2a8 8 0 11-4.2 14.8l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 0112 4zm-3 3.5c-.3 0-.7.2-.9.5-.4.5-.6 1-.4 1.9.3 1.2 1.4 2.8 3 4 1.6 1.100 2.900 1.500 3.900 1.300.7-.1 1.400-.8 1.500-1.400l.1-.6-1.800-.9-.7.9c-.9-.3-2-1.100-2.700-2.300l.6-.8-.8-1.800z"/></svg></a><a href="mailto:bocadinhocookie@gmail.com" aria-label="E-mail"><svg viewBox="0 0 24 24"><path d="M3 5h18a1 1 0 011 1v12a1 1 0 01-1 1H3a1 1 0 01-1-1V6a1 1 0 011-1zm1 2v.5l8 5.5 8-5.5V7zm16 3l-8 5.500L4 10v7h16z"/></svg></a></div></div></div><img loading="lazy" decoding="async" src="assets/photo-7.jpg" alt="Massa de cookie com gotas de chocolate"></section>
+<footer>© <span id="ano"></span> Bocadinho · Cookies e trufas artesanais<br><a href="https://instagram.com/bocadinh0" target="_blank" rel="noopener">@bocadinh0</a> · <a href="mailto:bocadinhocookie@gmail.com">bocadinhocookie@gmail.com</a> · <a href="https://wa.me/5521985929831" target="_blank" rel="noopener">WhatsApp (21) 98592-9831</a> · <a href="/privacidade.html">Política de Privacidade</a></footer>
+<a class="whatsapp-float" href="https://wa.me/5521985929831" target="_blank" rel="noopener" aria-label="Fale com a Bocadinho pelo WhatsApp"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15L2 22l5.1-1.3A10 10 0 1 0 12 2zm0 2a8 8 0 1 1-4.2 14.8l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 0 1 12 4zm-3 3.5c-.3 0-.7.2-.9.5-.4.5-.6 1-.4 1.9.3 1.2 1.4 2.8 3 4 1.6 1.1 2.9 1.5 3.9 1.3.7-.1 1.4-.8 1.5-1.4l.1-.6-1.8-.9-.7.9c-.9-.3-2-1.1-2.7-2.3l.6-.8-.8-1.8z"/></svg></a>
+<script src="app.js" defer></script>
+</body></html>
