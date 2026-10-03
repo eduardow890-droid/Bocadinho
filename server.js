@@ -32,7 +32,12 @@ function restringirAdminPorIp(req, res, next) {
 
   const ip = (req.ip || '').replace(/^::ffff:/, '').toLowerCase();
   if (!ipsAdminPermitidos.has(ip)) {
-    console.warn('[admin] acesso bloqueado; IP recebido:', ip || '(indisponível)');
+    console.warn('[admin] acesso bloqueado; diagnóstico de proxy:', JSON.stringify({
+      ip,
+      ips: req.ips,
+      xForwardedFor: req.get('x-forwarded-for') || '',
+      socketAddress: req.socket.remoteAddress || ''
+    }));
     return res.status(403).type('text/plain').send('Acesso restrito.');
   }
   next();
