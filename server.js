@@ -6,7 +6,9 @@ const db = require('./src/db');
 const { iniciarJobs } = require('./src/jobs');
 
 const app = express();
-app.set('trust proxy', 1);
+// Render encaminha a requisição por três saltos; mantenha este número alinhado
+// com a cadeia observada em X-Forwarded-For no serviço.
+app.set('trust proxy', 3);
 app.disable('x-powered-by');
 
 app.use(helmet({
@@ -32,12 +34,6 @@ function restringirAdminPorIp(req, res, next) {
 
   const ip = (req.ip || '').replace(/^::ffff:/, '').toLowerCase();
   if (!ipsAdminPermitidos.has(ip)) {
-    console.warn('[admin] acesso bloqueado; diagnóstico de proxy:', JSON.stringify({
-      ip,
-      ips: req.ips,
-      xForwardedFor: req.get('x-forwarded-for') || '',
-      socketAddress: req.socket.remoteAddress || ''
-    }));
     return res.status(403).type('text/plain').send('Acesso restrito.');
   }
   next();
