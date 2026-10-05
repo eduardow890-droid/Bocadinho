@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
   <title>Administração | Bocadinho</title>
+  <link rel="icon" href="/brand-assets/favicon.ico?v=2" sizes="16x16 32x32 48x48">
+  <link rel="icon" type="image/png" sizes="32x32" href="/brand-assets/favicon-32.png?v=2">
+  <link rel="icon" type="image/png" sizes="16x16" href="/brand-assets/favicon-16.png?v=2">
+  <link rel="apple-touch-icon" href="/brand-assets/apple-touch-icon.png?v=2">
   <link rel="stylesheet" href="/admin/admin.css">
 </head>
 <body>
@@ -43,6 +47,25 @@
         <article class="summary-card"><span>Pendentes</span><strong id="count-pendente">0</strong></article>
         <article class="summary-card alert-card"><span>Revisar</span><strong id="count-revisar">0</strong></article>
         <article class="summary-card total-card"><span>Pago hoje</span><strong id="paid-today">R$ 0,00</strong></article>
+      </section>
+
+      <section class="product-manager" aria-labelledby="products-title">
+        <div class="product-manager-heading">
+          <div><p class="eyebrow">Cardápio</p><h2 id="products-title">Produtos</h2><p class="muted">Cadastre doces, fotos e preços. Produtos desativados não aparecem para os clientes.</p></div>
+          <button id="new-product-button" class="button secondary" type="button">Adicionar doce</button>
+        </div>
+        <form id="product-form" class="product-form" enctype="multipart/form-data" hidden>
+          <input id="product-id" type="hidden">
+          <label>Nome do doce<input id="product-name" name="nome" type="text" maxlength="80" required></label>
+          <label>Descrição (opcional)<textarea id="product-description" name="descricao" rows="2" maxlength="300"></textarea></label>
+          <label>Preço em reais<input id="product-price" name="preco" type="number" min="0.01" max="5000" step="0.01" inputmode="decimal" required></label>
+          <label>Foto (JPEG, PNG ou WebP; até 5 MB)<input id="product-image" name="imagem" type="file" accept="image/jpeg,image/png,image/webp"></label>
+          <p id="product-image-help" class="product-help">Selecione uma imagem para o novo produto. Ao editar, deixe em branco para manter a foto atual.</p>
+          <div class="product-form-actions"><button id="save-product-button" class="button primary" type="submit">Salvar doce</button><button id="cancel-product-button" class="button secondary" type="button">Cancelar</button></div>
+          <p id="product-message" class="message" role="status" aria-live="polite" hidden></p>
+        </form>
+        <p id="products-loading" class="empty">Carregando produtos…</p>
+        <div id="product-list" class="product-list" aria-live="polite"></div>
       </section>
 
       <section class="toolbar" aria-label="Filtros de pedidos">

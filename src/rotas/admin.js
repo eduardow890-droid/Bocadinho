@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const multer = require('multer');
 const router = require('express').Router();
 const rateLimit = require('express-rate-limit');
 const db = require('../db');
@@ -6,6 +7,34 @@ const cfg = require('../config');
 const svc = require('../pedidos');
 const { notificarLoja } = require('../notificar');
 const { UUID } = require('../validacao');
+const storage = require('../storage');
+
+const uploadImagem = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024, files: 1, fields: 3, parts: 4 },
+  fileFilter: (req, file, cb) => {
+    if (['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) return cb(null, true);
+    cb(new Error('Envie uma imagem JPEG, PNG ou WebP.'));
+  }
+});
+
+function receberImagem(req, res, next) {
+  uploadImagem.single('imagem')(req, res, erro => {
+    if (!erro) return next();
+    const status = erro.code === 'LIMIT_FILE_SIZE' ? 413 : 400;
+    res.status(status).json({ erro: status === 413 ? 'A imagem deve ter no máximo 5 MB.' : erro.message });
+  });
+}
+
+function dadosProduto(body) {
+  const nome = String(body.nome || '').trim();
+  const descricao = String(body.descricao || '').trim();
+  const preco = Number(body.preco_centavos);
+  if (nome.length < 2 || nome.length > 80) throw Object.assign(new Error('O nome deve ter entre 2 e 80 caracteres.'), { status: 400 });
+  if (descricao.length > 300) throw Object.assign(new Error('A descrição deve ter no máximo 300 caracteres.'), { status: 400 });
+  if (!Number.isSafeInteger(preco) || preco < 1 || preco > 500000) throw Object.assign(new Error('Informe um preço válido de até R$ 5.000,00.'), { status: 400 });
+  return { nome, descricao, preco };
+}
 
 router.use(rateLimit({ windowMs: 60 * 1000, limit: 30, standardHeaders: true, legacyHeaders: false }));
 
@@ -17,6 +46,66 @@ router.use((req, res, next) => {
     return res.status(401).json({ erro: 'Não autorizado.' });
   }
   next();
+});
+
+router.get('/produtos', async (req, res, next) => {
+  try {
+    const produtos = (await db.query('SELECT id,nome,descricao,preco_centavos,imagem_url,ativo FROM produtos ORDER BY nome')).rows;
+    res.json(produtos);
+  } catch (e) { next(e); }
+});
+
+router.post('/produtos', receberImagem, async (req, res, next) => {
+  let imagem;
+  try {
+    const dados = dadosProduto(req.body);
+    if (!req.file) return res.status(400).json({ erro: 'Selecione uma foto do doce.' });
+    imagem = await storage.enviarImagem(req.file);
+    const id = crypto.randomUUID();
+    const produto = (await db.query(`INSERT INTO produtos
+      (id,nome,descricao,preco_centavos,ativo,imagem_url,imagem_path)
+      VALUES ($1,$2,$3,$4,TRUE,$5,$6)
+      RETURNING id,nome,descricao,preco_centavos,imagem_url,ativo`,
+      [id,dados.nome,dados.descricao,dados.preco,imagem.url,imagem.caminho])).rows[0];
+    res.status(201).json(produto);
+  } catch (e) {
+    if (imagem) await storage.excluirImagem(imagem.caminho).catch(() => {});
+    if (e.status) return res.status(e.status).json({ erro: e.message });
+    next(e);
+  }
+});
+
+router.patch('/produtos/:id', receberImagem, async (req, res, next) => {
+  let imagemNova;
+  try {
+    const dados = dadosProduto(req.body);
+    const anterior = (await db.query('SELECT id,imagem_path FROM produtos WHERE id=$1', [req.params.id])).rows[0];
+    if (!anterior) return res.status(404).json({ erro: 'Produto não encontrado.' });
+    if (req.file) imagemNova = await storage.enviarImagem(req.file);
+    const imagemUrl = imagemNova?.url || null;
+    const imagemPath = imagemNova?.caminho || null;
+    const produto = (await db.query(`UPDATE produtos SET nome=$1,descricao=$2,preco_centavos=$3,
+      imagem_url=COALESCE($4,imagem_url),imagem_path=COALESCE($5,imagem_path)
+      WHERE id=$6 RETURNING id,nome,descricao,preco_centavos,imagem_url,ativo`,
+      [dados.nome,dados.descricao,dados.preco,imagemUrl,imagemPath,req.params.id])).rows[0];
+    if (imagemNova && anterior.imagem_path) {
+      await storage.excluirImagem(anterior.imagem_path).catch(() => console.warn('[produtos] não foi possível remover foto substituída.'));
+    }
+    res.json(produto);
+  } catch (e) {
+    if (imagemNova) await storage.excluirImagem(imagemNova.caminho).catch(() => {});
+    if (e.status) return res.status(e.status).json({ erro: e.message });
+    next(e);
+  }
+});
+
+router.patch('/produtos/:id/ativo', async (req, res, next) => {
+  try {
+    if (typeof req.body?.ativo !== 'boolean') return res.status(400).json({ erro: 'Informe se o produto está ativo.' });
+    const produto = (await db.query('UPDATE produtos SET ativo=$1 WHERE id=$2 RETURNING id,ativo', [req.body.ativo, req.params.id])).rows[0];
+    if (!produto) return res.status(404).json({ erro: 'Produto não encontrado.' });
+    res.json(produto);
+  } catch (e) { next(e); }
 });
 
 // Lista pedidos: /api/admin/pedidos?status=pago

@@ -46,7 +46,8 @@ async function init() {
   await query(`
     CREATE TABLE IF NOT EXISTS produtos (
       id TEXT PRIMARY KEY, nome TEXT NOT NULL, descricao TEXT NOT NULL DEFAULT '',
-      preco_centavos INTEGER NOT NULL CHECK (preco_centavos > 0), ativo BOOLEAN NOT NULL DEFAULT TRUE
+      preco_centavos INTEGER NOT NULL CHECK (preco_centavos > 0), ativo BOOLEAN NOT NULL DEFAULT TRUE,
+      imagem_url TEXT, imagem_path TEXT
     );
     CREATE TABLE IF NOT EXISTS pedidos (
       id UUID PRIMARY KEY, nome TEXT NOT NULL, email TEXT NOT NULL, telefone TEXT NOT NULL,
@@ -72,6 +73,8 @@ async function init() {
     ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS numero TEXT NOT NULL DEFAULT '';
     ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS complemento TEXT NOT NULL DEFAULT '';
     ALTER TABLE pagamentos ADD COLUMN IF NOT EXISTS mp_order_id TEXT;
+    ALTER TABLE produtos ADD COLUMN IF NOT EXISTS imagem_url TEXT;
+    ALTER TABLE produtos ADD COLUMN IF NOT EXISTS imagem_path TEXT;
     CREATE INDEX IF NOT EXISTS idx_pedidos_status ON pedidos(status, expira_em);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_pagamentos_mp_order_id ON pagamentos(mp_order_id) WHERE mp_order_id IS NOT NULL;
     DELETE FROM eventos_webhook a USING eventos_webhook b
@@ -80,10 +83,8 @@ async function init() {
   `);
   for (const p of produtos) {
     await query(`INSERT INTO produtos (id,nome,descricao,preco_centavos,ativo) VALUES ($1,$2,$3,$4,TRUE)
-      ON CONFLICT (id) DO UPDATE SET nome=EXCLUDED.nome, descricao=EXCLUDED.descricao,
-      preco_centavos=EXCLUDED.preco_centavos, ativo=TRUE`, [p.id, p.nome, p.descricao, p.preco_centavos]);
+      ON CONFLICT (id) DO NOTHING`, [p.id, p.nome, p.descricao, p.preco_centavos]);
   }
-  await query('UPDATE produtos SET ativo=FALSE WHERE NOT (id = ANY($1::text[]))', [produtos.map(p => p.id)]);
 }
 
 async function close() { await pool.end(); }

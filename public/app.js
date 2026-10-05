@@ -43,7 +43,7 @@ function montarProdutos(){
 		quantidadesAnteriores[p.id]=0;
 		const d=document.createElement('div');
 		d.className='item';
-		d.innerHTML='<div><b>'+esc(p.nome)+'</b><small>'+esc(p.descricao)+'</small><div class="pr">'+brl(p.preco_centavos)+'</div></div><div class="qty"><button type="button" data-id="'+esc(p.id)+'" data-d="-1" aria-label="Diminuir '+esc(p.nome)+'">−</button><span id="q_'+esc(p.id)+'">0</span><button type="button" data-id="'+esc(p.id)+'" data-d="1" aria-label="Aumentar '+esc(p.nome)+'">+</button></div>';
+		d.innerHTML=(p.imagem_url?'<img class="product-image" src="'+esc(p.imagem_url)+'" alt="" loading="lazy" decoding="async">':'')+'<div class="item-copy"><b>'+esc(p.nome)+'</b><small>'+esc(p.descricao)+'</small><div class="pr">'+brl(p.preco_centavos)+'</div></div><div class="qty"><button type="button" data-id="'+esc(p.id)+'" data-d="-1" aria-label="Diminuir '+esc(p.nome)+'">−</button><span id="q_'+esc(p.id)+'">0</span><button type="button" data-id="'+esc(p.id)+'" data-d="1" aria-label="Aumentar '+esc(p.nome)+'">+</button></div>';
 		box.appendChild(d);
 	});
 }

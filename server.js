@@ -6,6 +6,10 @@ const db = require('./src/db');
 const { iniciarJobs } = require('./src/jobs');
 
 const app = express();
+const origemImagensProdutos = (() => {
+  try { return new URL(process.env.SUPABASE_URL).origin; }
+  catch (_) { return null; }
+})();
 // Render encaminha a requisição por três saltos; mantenha este número alinhado
 // com a cadeia observada em X-Forwarded-For no serviço.
 app.set('trust proxy', 3);
@@ -15,6 +19,7 @@ app.use(helmet({
   contentSecurityPolicy: {
     useDefaults: true,
     directives: {
+      'img-src': ["'self'", 'data:', ...(origemImagensProdutos ? [origemImagensProdutos] : [])],
       // em desenvolvimento (http://localhost) não forçamos https
       'upgrade-insecure-requests': cfg.producao ? [] : null
     }
@@ -52,6 +57,12 @@ app.get(['/admin', '/admin/'], (req, res) => {
   res.set({ 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow' });
   res.sendFile(path.join(__dirname, 'public', 'admin', 'admin.html'));
 });
+
+// Ícones e imagem social ficam fora da pasta pública principal.
+app.use('/brand-assets', express.static(path.join(__dirname, 'assets'), {
+  maxAge: '1d',
+  index: false
+}));
 
 app.use(express.static(path.join(__dirname, 'public')));
 

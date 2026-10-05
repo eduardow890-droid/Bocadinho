@@ -14,6 +14,7 @@
   let pedidosPagosConhecidos = new Set();
   let somAtivo = false;
   let intervalo = null;
+  let produtos = [];
 
   const dinheiro = centavos => (Number(centavos || 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const dataHora = ms => new Date(ms).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
@@ -35,7 +36,7 @@
   async function requisicao(caminho, opcoes = {}) {
     const headers = new Headers(opcoes.headers || {});
     headers.set('x-admin-token', token);
-    if (opcoes.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+    if (opcoes.body && !(opcoes.body instanceof FormData) && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
     const resposta = await fetch(caminho, { ...opcoes, headers });
     if (resposta.status === 401) throw Object.assign(new Error('Token inválido ou sessão expirada.'), { status: 401 });
     if (resposta.status === 429) throw Object.assign(new Error('Muitas tentativas. Aguarde um minuto.'), { status: 429 });
@@ -50,6 +51,91 @@
       $(`count-${status}`).textContent = String(contagens[status] || 0);
     });
     $('paid-today').textContent = dinheiro(resumo.pagos_hoje?.total_centavos);
+  }
+
+  function renderProdutos() {
+    const lista = $('product-list');
+    lista.replaceChildren();
+    $('products-loading').hidden = true;
+    if (!produtos.length) {
+      lista.append(el('p', 'Nenhum produto cadastrado.', 'empty'));
+      return;
+    }
+    produtos.forEach(produto => {
+      const card = el('article', undefined, `product-card${produto.ativo ? '' : ' is-inactive'}`);
+      if (produto.imagem_url) {
+        const imagem = el('img', undefined, 'product-thumb');
+        imagem.src = produto.imagem_url;
+        imagem.alt = produto.nome;
+        imagem.loading = 'lazy';
+        card.append(imagem);
+      } else card.append(el('div', '🍪', 'product-thumb product-thumb-empty'));
+      const info = el('div', undefined, 'product-info');
+      info.append(el('h3', produto.nome));
+      if (produto.descricao) info.append(el('p', produto.descricao));
+      info.append(el('strong', dinheiro(produto.preco_centavos)));
+      info.append(el('span', produto.ativo ? 'Disponível no cardápio' : 'Desativado', 'product-state'));
+      const actions = el('div', undefined, 'product-actions');
+      const editar = el('button', 'Editar', 'button secondary');
+      editar.type = 'button';
+      editar.addEventListener('click', () => editarProduto(produto));
+      const alternar = el('button', produto.ativo ? 'Desativar' : 'Ativar', 'button secondary');
+      alternar.type = 'button';
+      alternar.addEventListener('click', () => alternarProduto(produto, alternar));
+      actions.append(editar, alternar);
+      card.append(info, actions);
+      lista.append(card);
+    });
+  }
+
+  async function carregarProdutosAdmin() {
+    $('products-loading').hidden = false;
+    try {
+      produtos = await requisicao('/api/admin/produtos');
+      renderProdutos();
+    } catch (erro) {
+      $('products-loading').hidden = true;
+      $('product-list').replaceChildren(el('p', erro.message || 'Não foi possível carregar os produtos.', 'message error'));
+      if (erro.status === 401) sair();
+    }
+  }
+
+  function limparFormularioProduto() {
+    $('product-form').reset();
+    $('product-id').value = '';
+    $('product-image').required = true;
+    $('product-image-help').textContent = 'Selecione uma imagem para o novo produto. Ao editar, deixe em branco para manter a foto atual.';
+    $('save-product-button').textContent = 'Salvar doce';
+    $('product-message').hidden = true;
+    $('product-form').hidden = true;
+  }
+
+  function editarProduto(produto) {
+    $('product-form').hidden = false;
+    $('product-id').value = produto.id;
+    $('product-name').value = produto.nome;
+    $('product-description').value = produto.descricao || '';
+    $('product-price').value = (produto.preco_centavos / 100).toFixed(2);
+    $('product-image').value = '';
+    $('product-image').required = false;
+    $('product-image-help').textContent = produto.imagem_url ? 'Foto atual mantida. Selecione outra somente se quiser substituí-la.' : 'Este produto ainda não tem foto; selecione uma imagem para adicioná-la.';
+    $('save-product-button').textContent = 'Salvar alterações';
+    $('product-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  async function alternarProduto(produto, botao) {
+    const ativo = !produto.ativo;
+    if (!window.confirm(`${ativo ? 'Ativar' : 'Desativar'} “${produto.nome}” no cardápio?`)) return;
+    botao.disabled = true;
+    try {
+      await requisicao(`/api/admin/produtos/${encodeURIComponent(produto.id)}/ativo`, {
+        method: 'PATCH', body: JSON.stringify({ ativo })
+      });
+      await carregarProdutosAdmin();
+    } catch (erro) {
+      mostrarMensagem(erro.message, true);
+      botao.disabled = false;
+    }
   }
 
   function criarWhatsapp(pedido) {
@@ -211,6 +297,7 @@
     primeiraCarga = true;
     pedidosPagosConhecidos = new Set();
     await carregar();
+    await carregarProdutosAdmin();
     if (intervalo) clearInterval(intervalo);
     intervalo = setInterval(() => { if (!document.hidden) carregar(); }, 15000);
   }
@@ -231,6 +318,48 @@
     $('sound-button').textContent = somAtivo ? 'Desativar som' : 'Ativar som';
     $('sound-button').setAttribute('aria-pressed', String(somAtivo));
     if (somAtivo) tocarAviso();
+  });
+
+  $('new-product-button').addEventListener('click', () => {
+    limparFormularioProduto();
+    $('product-form').hidden = false;
+    $('product-image').required = true;
+    $('product-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  $('cancel-product-button').addEventListener('click', limparFormularioProduto);
+  $('product-form').addEventListener('submit', async evento => {
+    evento.preventDefault();
+    const botao = $('save-product-button');
+    const id = $('product-id').value;
+    const preco = Number($('product-price').value);
+    if (!Number.isFinite(preco) || preco < 0.01) {
+      $('product-message').textContent = 'Informe um preço válido.';
+      $('product-message').className = 'message error';
+      $('product-message').hidden = false;
+      return;
+    }
+    const dados = new FormData();
+    dados.set('nome', $('product-name').value.trim());
+    dados.set('descricao', $('product-description').value.trim());
+    dados.set('preco_centavos', String(Math.round(preco * 100)));
+    if ($('product-image').files[0]) dados.set('imagem', $('product-image').files[0]);
+    botao.disabled = true;
+    $('product-message').hidden = true;
+    try {
+      await requisicao(id ? `/api/admin/produtos/${encodeURIComponent(id)}` : '/api/admin/produtos', {
+        method: id ? 'PATCH' : 'POST', body: dados
+      });
+      limparFormularioProduto();
+      mostrarMensagem('Produto salvo no cardápio.');
+      await carregarProdutosAdmin();
+    } catch (erro) {
+      $('product-message').textContent = erro.message || 'Não foi possível salvar o produto.';
+      $('product-message').className = 'message error';
+      $('product-message').hidden = false;
+      if (erro.status === 401) sair();
+    } finally {
+      botao.disabled = false;
+    }
   });
 
   try {

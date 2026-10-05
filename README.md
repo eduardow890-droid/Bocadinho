@@ -109,7 +109,13 @@ O projeto usa PostgreSQL pelo driver `pg`. No Supabase, abra **Project Settings 
 DATABASE_URL=postgresql://postgres.PROJECT_REF:SENHA@aws-0-REGIAO.pooler.supabase.com:5432/postgres?sslmode=require
 ```
 
-Use a opção **Session pooler** no Supabase, não a conexão direta `db.PROJECT_REF.supabase.co`, pois o Render pode não ter conectividade IPv6. Em produção, a aplicação força `sslmode=verify-full` e exige `DB_SSL_CA`, o certificado raiz baixado em **Supabase → Database Settings → SSL Configuration**. No Render, carregue-o em **Environment → Secret Files** como `supabase-prod-ca-2021.crt` e configure `DB_SSL_CA=/etc/secrets/supabase-prod-ca-2021.crt`. O hostname deve ser o host exato da URI do Supabase. Na primeira inicialização, o sistema cria as tabelas e sincroniza o catálogo; o deploy só inicia se a conexão TLS validada funcionar. A senha da conexão nunca deve ser publicada no GitHub. Configure no Render uma versão LTS do Node.js ainda suportada (22 ou superior).
+Use a opção **Session pooler** no Supabase, não a conexão direta `db.PROJECT_REF.supabase.co`, pois o Render pode não ter conectividade IPv6. Em produção, a aplicação força `sslmode=verify-full` e exige `DB_SSL_CA`, o certificado raiz baixado em **Supabase → Database Settings → SSL Configuration**. No Render, carregue-o em **Environment → Secret Files** como `supabase-prod-ca-2021.crt` e configure `DB_SSL_CA=/etc/secrets/supabase-prod-ca-2021.crt`. O hostname deve ser o host exato da URI do Supabase. Na primeira inicialização, o sistema cria as tabelas e insere os produtos padrão que ainda não existem; não sobrescreve preços ou nomes editados pelo dono. O deploy só inicia se a conexão TLS validada funcionar. A senha da conexão nunca deve ser publicada no GitHub. Configure no Render uma versão LTS do Node.js ainda suportada (22 ou superior).
+
+### Fotos e gerenciamento do catálogo
+
+O painel `/admin` permite adicionar produtos com foto, editar nome/descrição/preço e ativar ou desativar produtos. As imagens ficam no Supabase Storage para persistirem em deploys do Render. Crie no Supabase Storage um bucket público chamado `produtos` e configure no Render `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (somente no servidor) e `SUPABASE_STORAGE_BUCKET=produtos`. A chave de serviço nunca deve ser usada no navegador nem enviada ao Git. São aceitas imagens JPEG, PNG ou WebP de até 5 MB.
+
+O serviço cria automaticamente as colunas de imagem na tabela `produtos`; produtos desativados são ocultados do cardápio público, sem apagar o histórico dos pedidos. Os produtos padrão são inseridos apenas quando ainda não existem, para preservar alterações feitas pelo dono no painel.
 
 ## Limitações conhecidas
 
