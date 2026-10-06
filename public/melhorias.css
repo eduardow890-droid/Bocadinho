@@ -1,0 +1,80 @@
+/* Bocadinho — melhorias visuais (carregar DEPOIS de style.css). Mantém paleta e identidade. */
+
+/* 1. Corrige o stepper de quantidade (no style.css os seletores estão sem o ponto) */
+ qty{display:flex;align-items:center;gap:12px}
+ qty button{width:52px;height:52px;border:0;border-radius:50%;background:var(--brown);color:var(--pale);font-size:26px;font-weight:700;line-height:1;cursor:pointer;transition:transform .15s ease-out}
+ qty button:active:not(:disabled){transform:scale(.92)}
+ qty span{min-width:32px;text-align:center;font-weight:700;font-size:21px}
+ qty .is-bumping{animation:quantity-bounce .4s ease-out}
+
+/* 2. Seção do pedido não pode ter transform (quebra o position:fixed da barra de resumo) */
+.pedido.reveal,.pedido .reveal,.motion-ready .pedido.reveal.is-visible{opacity:1!important;transform:none!important;transition:none!important}
+
+/* 3. Base: fonte do corpo, alturas dinâmicas, âncoras */
+body{font-family:'Outfit',Arial,Helvetica,sans-serif;font-weight:500;line-height:1.4}
+.form input,.form textarea{font-family:Arial,sans-serif}
+html{scroll-padding-top:72px}
+.hero{min-height:100vh;min-height:100svh}
+.btn{min-height:48px}
+.btn:active{transform:scale(.98)}
+.hero-sub{margin:-24px 0 0;color:var(--pale);font-size:clamp(18px,3vw,26px);text-shadow:0 1px 8px rgba(0,0,0,.6);text-align:center;animation:hero-enter .65s ease-out .12s both}
+
+/* 4. Menu fixo: transparente na hero, marrom depois */
+.site-nav{position:fixed;top:0;padding:calc(8px + env(safe-area-inset-top,0px)) 16px 8px;transition:background .25s ease-out,box-shadow .25s ease-out}
+.site-nav a{min-height:44px;display:inline-flex;align-items:center;padding:8px 12px}
+.site-nav.is-stuck{background:var(--brown);box-shadow:0 4px 16px rgba(90,33,8,.25)}
+.site-nav.is-stuck a{text-shadow:none}
+
+/* 5. Largura máxima em telas grandes (fundos continuam de ponta a ponta) */
+.vontade,.tem,.combos,.como,.pedido,.aten,.contato{padding-inline:max(20px,calc((100% - 1200px)/2))}
+
+/* 6. Checkout centralizado e produtos em grade */
+#dados,.pix{max-width:760px;margin-inline:auto}
+.pedido .t,.pedido .sub,.checkout-progress,.cart-summary{max-width:760px;margin-inline:auto}
+.pedido .t{margin-bottom:8px}
+@media(min-width:900px){
+	#items{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+	#items .item{margin-bottom:0}
+	#dados,.pix,.pedido .t,.pedido .sub,.checkout-progress,.cart-summary{max-width:920px}
+}
+
+/* 7. Tablet: duas colunas só a partir de 960px */
+@media(max-width:960px){
+	.vontade,.aten,.contato{grid-template-columns:1fr}
+	.vontade{min-height:0}
+	.vontade img,.aten img,.contato img{height:auto;max-height:380px}
+	.cc{grid-template-columns:1fr 1fr}
+}
+@media(max-width:600px){.cc{grid-template-columns:1fr}}
+
+/* 8. Contraste e leitura */
+.pix-etapas{font-size:12px}
+.pix-etapas li{color:#6c5b4d}
+.aviso,.pix-ajuda{font-size:13px}
+.checkout-progress li{font-size:15px}
+
+/* 9. Pix no celular: copia e cola primeiro, QR depois */
+@media(max-width:700px){
+	#pix-corpo{display:flex;flex-direction:column}
+	#pix-valores{order:0}
+	#pix-tempo{order:1;margin:4px 0 12px}
+	#pix-copiar{order:2;font-size:20px;padding:20px}
+	#pix-code-label{order:3;margin-top:12px}
+	#pix-code{order:4}
+	#pix-qr{order:5}
+	.pix-ajuda{order:6}
+	#pix-cancelar{order:7}
+}
+
+/* Brilho progressivo das etapas do pedido */
+@keyframes pix-dot-pulse{
+	0%,100%{transform:translate(-50%,-50%) scale(.88);opacity:.48}
+	50%{transform:translate(-50%,-50%) scale(1.45);opacity:.95}
+}
+.pix-etapas li::before{z-index:1;transition:background-color .3s ease,border-color .3s ease,box-shadow .3s ease}
+.pix-etapas li::after{content:'';position:absolute;top:7px;left:50%;width:20px;height:20px;transform:translate(-50%,-50%);border-radius:50%;background:var(--green);opacity:0;pointer-events:none}
+.pix-etapas li.concluida::before{background:var(--green);border-color:var(--wine);box-shadow:0 0 7px rgba(169,181,107,.8),0 0 14px rgba(169,181,107,.5)}
+.pix-etapas li.concluida::after{opacity:.35;transform:translate(-50%,-50%) scale(1.1)}
+.pix-etapas li.atual::before{background:#c4d77e;border-color:var(--wine);box-shadow:0 0 8px rgba(196,215,126,.95),0 0 18px rgba(169,181,107,.85)}
+.pix-etapas li.atual::after{animation:pix-dot-pulse 1.7s ease-in-out infinite}
+@media(prefers-reduced-motion:reduce){.pix-etapas li.atual::after{animation:none;opacity:.45;transform:translate(-50%,-50%) scale(1.15)}}
