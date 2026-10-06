@@ -29,32 +29,57 @@
 <div class="c"><span>🛵</span><h3>Entregas</h3><p>Via Uber Envios. O cliente paga o valor do Uber Envios, da loja até a sua casa, conforme a distância.</p></div>
 <div class="c"><span>📝</span><h3>Pedidos</h3><p>Escolha seus produtos, informe o endereço e aguarde a confirmação do pedido. O prazo de preparo será informado no momento da compra.</p></div></div></section>
 
-<section class="pedido" id="pedido"><h2 class="t">Monte seu pedido</h2><p class="sub">Escolha os produtos, preencha seus dados e pague na hora com Pix.</p>
-<div class="ped-grid"><div id="items"></div>
-<div class="form">
+<section class="pedido" id="pedido"><h2 class="t">Monte seu pedido</h2><p class="sub">Escolha seus doces, informe como receber e revise antes de gerar o Pix.</p>
+<ol class="checkout-progress" id="checkout-progress" aria-label="Etapas do pedido">
+<li class="is-current" data-checkout-progress="1" aria-current="step"><span>1</span><b>Escolha os produtos</b></li>
+<li data-checkout-progress="2"><span>2</span><b>Seus dados</b></li>
+<li data-checkout-progress="3"><span>3</span><b>Revise e gere o Pix</b></li>
+</ol>
+<details class="cart-summary" id="cart-summary" open><summary><span><b>Resumo do pedido</b><span id="cart-summary-count">0 itens</span></span><strong id="cart-summary-total">R$ 0,00</strong></summary><div class="resumo" id="resumo" role="status" aria-live="polite" aria-atomic="true"></div></details>
 <div id="dados">
-<label for="nome">Seu nome *</label><input type="text" id="nome" autocomplete="name" maxlength="80" placeholder="Digite seu nome">
-<label for="telefone">WhatsApp / telefone *</label><input type="tel" id="telefone" autocomplete="tel" inputmode="tel" maxlength="20" placeholder="(21) 99999-9999">
-<label for="email">E-mail *</label><input type="email" id="email" autocomplete="email" maxlength="120" placeholder="voce@email.com">
-<fieldset><legend>Como prefere receber?</legend><div class="radios"><label><input type="radio" name="tipo" value="entrega" checked> Entrega</label><label><input type="radio" name="tipo" value="retirada"> Retirada</label></div></fieldset>
-<div id="endwrap"><fieldset class="endereco-fields"><legend>Endereço de entrega</legend><label for="rua">Rua *</label><input type="text" id="rua" autocomplete="address-line1" maxlength="120" placeholder="Nome da rua"><div class="endereco-grid"><div><label for="numero">Número *</label><input type="text" id="numero" inputmode="numeric" maxlength="20" placeholder="123"></div><div><label for="complemento">Complemento</label><input type="text" id="complemento" autocomplete="address-line2" maxlength="100" placeholder="Apto, casa"></div></div><label for="regiao">Bairro *</label><input type="text" id="regiao" autocomplete="address-level3" maxlength="80" placeholder="Ex.: Copacabana"><label for="cidade">Cidade *</label><input type="text" id="cidade" autocomplete="address-level2" maxlength="80" placeholder="Ex.: Rio de Janeiro"></fieldset></div><p class="retirada-ajuda" id="retirada-ajuda" hidden>Na retirada, o endereço não é necessário. Aguarde a confirmação para receber as instruções do local.</p>
-<label for="obs">Observação</label><textarea id="obs" rows="3" maxlength="300" placeholder="Ex.: sem castanhas, presente, horário preferido..."></textarea>
-<div class="resumo" id="resumo" role="status" aria-live="polite" aria-atomic="true"></div>
-<div class="erro" id="erro" role="alert" aria-live="assertive"></div>
-<p class="checkout-etapa" aria-label="Etapa 1 de 2">1. Revise os dados do pedido → 2. Gere o Pix</p><button type="button" class="btn" id="enviar">Revisar e pagar com Pix</button>
-<p class="aviso">Nossos produtos podem conter leite, glúten, ovos, amendoim e castanhas. Informe alergias na observação. Na entrega, o cliente paga o Uber Envios diretamente, da loja até sua casa; valor e prazo são combinados pelo WhatsApp. O pedido é confirmado automaticamente após o pagamento do Pix.</p>
+<section class="checkout-step is-current" id="checkout-step-1" aria-labelledby="checkout-title-1">
+<h3 id="checkout-title-1">1. Escolha os produtos</h3><p class="step-hint">Use + e − para montar seu pedido. Os preços são calculados pelo servidor.</p>
+<div class="erro" id="products-error" role="alert" aria-live="assertive"></div>
+<div id="items" aria-label="Produtos disponíveis"></div>
+<div class="step-actions"><button type="button" class="btn" id="continue-to-data">Continuar para seus dados</button></div>
+</section>
+
+<section class="checkout-step" id="checkout-step-2" aria-labelledby="checkout-title-2" hidden>
+<h3 id="checkout-title-2">2. Seus dados e recebimento</h3><p class="step-hint">Campos com * são obrigatórios. Seu navegador pode sugerir dados salvos para preencher mais rápido.</p>
+<div class="form">
+<div class="erro" id="data-error" role="alert" aria-live="assertive"></div>
+<label for="nome">Seu nome *</label><input type="text" id="nome" autocomplete="name" maxlength="80" placeholder="Digite seu nome" required>
+<label for="telefone">WhatsApp / telefone *</label><input type="tel" id="telefone" autocomplete="tel" inputmode="tel" maxlength="20" placeholder="(21) 99999-9999" required>
+<label for="email">E-mail *</label><input type="email" id="email" autocomplete="email" maxlength="120" placeholder="voce@email.com" required>
+<fieldset><legend>Como prefere receber? *</legend><div class="radios"><label><input type="radio" name="tipo" value="entrega" checked> Entrega</label><label><input type="radio" name="tipo" value="retirada"> Retirada</label></div></fieldset>
+<div id="endwrap"><fieldset class="endereco-fields"><legend>Endereço de entrega</legend><label for="rua">Rua *</label><input type="text" id="rua" autocomplete="address-line1" maxlength="120" placeholder="Nome da rua" required><div class="endereco-grid"><div><label for="numero">Número *</label><input type="text" id="numero" autocomplete="off" inputmode="text" maxlength="20" placeholder="123" required></div><div><label for="complemento">Complemento</label><input type="text" id="complemento" autocomplete="address-line2" maxlength="100" placeholder="Apto, casa"></div></div><label for="regiao">Bairro *</label><input type="text" id="regiao" autocomplete="address-level3" maxlength="80" placeholder="Ex.: Copacabana" required><label for="cidade">Cidade *</label><input type="text" id="cidade" autocomplete="address-level2" maxlength="80" placeholder="Ex.: Rio de Janeiro" required></fieldset></div>
+<p class="delivery-note" id="delivery-note">O envio é pago separadamente pelo cliente ao Uber Envios. O valor e o prazo são combinados pelo WhatsApp conforme o endereço.</p>
+<p class="retirada-ajuda" id="retirada-ajuda" hidden>Na retirada, não é necessário informar endereço. A loja enviará as instruções após a confirmação do pedido.</p>
+<label for="obs">Observação (opcional)</label><textarea id="obs" rows="3" maxlength="300" placeholder="Ex.: alergias, presente ou instruções importantes..."></textarea>
+<p class="aviso">Nossos produtos podem conter leite, glúten, ovos, amendoim e castanhas. Informe alergias ou restrições na observação; entre em contato com a loja para confirmar ingredientes.</p>
 <p class="aviso">Ao informar seus dados, consulte nossa <a href="/privacidade.html">Política de Privacidade</a>.</p>
+</div>
+<div class="step-actions step-actions-split"><button type="button" class="btn secondary-step" id="back-to-products">Voltar aos produtos</button><button type="button" class="btn" id="continue-to-review">Revisar pedido</button></div>
+</section>
+
+<section class="checkout-step" id="checkout-step-3" aria-labelledby="checkout-title-3" hidden>
+<h3 id="checkout-title-3">3. Revise seu pedido</h3><p class="step-hint">Confira os itens, o recebimento e seus dados antes de gerar o Pix.</p>
+<div id="order-review" class="order-review"></div>
+<div class="review-delivery-note" id="review-delivery-note"><b>Entrega:</b> o valor do Uber Envios é pago separadamente pelo cliente. Valor e prazo são combinados pelo WhatsApp conforme o endereço.</div>
+<div class="erro" id="erro" role="alert" aria-live="assertive"></div>
+<div class="step-actions step-actions-split"><button type="button" class="btn secondary-step" id="back-to-data">Editar meus dados</button><button type="button" class="btn" id="enviar">Confirmar e gerar Pix</button></div>
+</section>
 </div>
 
 <div class="pix" id="pix" hidden>
 <h3>Pague com Pix</h3>
 <div id="pix-corpo">
-<img id="pix-qr" alt="QR Code do Pix" width="220" height="220">
-<p id="pix-valores">Total: <b id="pix-total"></b></p>
+<p id="pix-valores" class="pix-amount">Valor do Pix: <b id="pix-total"></b></p>
+<img id="pix-qr" alt="QR Code para pagar este pedido Pix" width="220" height="220">
 <label for="pix-code">Pix copia e cola</label>
 <textarea id="pix-code" readonly rows="3"></textarea>
 <button type="button" class="btn" id="pix-copiar">Copiar código Pix</button>
-<p class="pix-ajuda">Depois de pagar, mantenha esta página aberta para acompanhar o status do pedido.</p>
+<p class="pix-ajuda">Pague até o prazo indicado abaixo. Você pode voltar a esta página no mesmo navegador para retomar este pedido.</p>
 <button type="button" class="btn pix-cancelar" id="pix-cancelar">Cancelar pedido</button>
 <p class="pix-tempo" id="pix-tempo"></p>
 </div>

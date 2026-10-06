@@ -17,7 +17,7 @@ const limiteConsulta = rateLimit({
 
 // Catálogo (preços vêm do servidor)
 router.get('/produtos', async (req, res, next) => {
-  try { res.json((await db.query('SELECT id,nome,descricao,preco_centavos,imagem_url FROM produtos WHERE ativo=TRUE ORDER BY nome')).rows); }
+  try { res.json((await db.query('SELECT id,nome,descricao,preco_centavos,imagem_url,esgotado FROM produtos WHERE ativo=TRUE ORDER BY nome')).rows); }
   catch (e) { next(e); }
 });
 

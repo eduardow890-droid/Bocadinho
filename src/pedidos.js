@@ -10,7 +10,7 @@ async function criarPedido(d, expiraMin) {
 
   const ids = d.itens.map(i => i.id);
   const placeholders = ids.map((_, i) => `$${i + 1}`).join(',');
-  const lista = await db.query(`SELECT id,nome,preco_centavos FROM produtos WHERE ativo=TRUE AND id IN (${placeholders})`, ids);
+  const lista = await db.query(`SELECT id,nome,preco_centavos FROM produtos WHERE ativo=TRUE AND esgotado=FALSE AND id IN (${placeholders})`, ids);
   const catalogo = new Map(lista.rows.map(p => [p.id, p]));
   let total = 0;
   const itens = d.itens.map(i => {

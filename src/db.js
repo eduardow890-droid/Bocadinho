@@ -47,7 +47,7 @@ async function init() {
     CREATE TABLE IF NOT EXISTS produtos (
       id TEXT PRIMARY KEY, nome TEXT NOT NULL, descricao TEXT NOT NULL DEFAULT '',
       preco_centavos INTEGER NOT NULL CHECK (preco_centavos > 0), ativo BOOLEAN NOT NULL DEFAULT TRUE,
-      imagem_url TEXT, imagem_path TEXT
+      imagem_url TEXT, imagem_path TEXT, esgotado BOOLEAN NOT NULL DEFAULT FALSE
     );
     CREATE TABLE IF NOT EXISTS pedidos (
       id UUID PRIMARY KEY, nome TEXT NOT NULL, email TEXT NOT NULL, telefone TEXT NOT NULL,
@@ -75,6 +75,7 @@ async function init() {
     ALTER TABLE pagamentos ADD COLUMN IF NOT EXISTS mp_order_id TEXT;
     ALTER TABLE produtos ADD COLUMN IF NOT EXISTS imagem_url TEXT;
     ALTER TABLE produtos ADD COLUMN IF NOT EXISTS imagem_path TEXT;
+    ALTER TABLE produtos ADD COLUMN IF NOT EXISTS esgotado BOOLEAN NOT NULL DEFAULT FALSE;
     CREATE INDEX IF NOT EXISTS idx_pedidos_status ON pedidos(status, expira_em);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_pagamentos_mp_order_id ON pagamentos(mp_order_id) WHERE mp_order_id IS NOT NULL;
     DELETE FROM eventos_webhook a USING eventos_webhook b

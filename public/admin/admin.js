@@ -74,7 +74,7 @@
       info.append(el('h3', produto.nome));
       if (produto.descricao) info.append(el('p', produto.descricao));
       info.append(el('strong', dinheiro(produto.preco_centavos)));
-      info.append(el('span', produto.ativo ? 'Disponível no cardápio' : 'Desativado', 'product-state'));
+      info.append(el('span', !produto.ativo ? 'Oculto no cardápio' : produto.esgotado ? 'Esgotado' : 'Disponível no cardápio', `product-state${produto.esgotado ? ' is-sold-out' : ''}`));
       const actions = el('div', undefined, 'product-actions');
       const editar = el('button', 'Editar', 'button secondary');
       editar.type = 'button';
@@ -116,6 +116,7 @@
     $('product-name').value = produto.nome;
     $('product-description').value = produto.descricao || '';
     $('product-price').value = (produto.preco_centavos / 100).toFixed(2);
+    $('product-sold-out').checked = Boolean(produto.esgotado);
     $('product-image').value = '';
     $('product-image').required = false;
     $('product-image-help').textContent = produto.imagem_url ? 'Foto atual mantida. Selecione outra somente se quiser substituí-la.' : 'Este produto ainda não tem foto; selecione uma imagem para adicioná-la.';
@@ -342,6 +343,7 @@
     dados.set('nome', $('product-name').value.trim());
     dados.set('descricao', $('product-description').value.trim());
     dados.set('preco_centavos', String(Math.round(preco * 100)));
+    dados.set('esgotado', String($('product-sold-out').checked));
     if ($('product-image').files[0]) dados.set('imagem', $('product-image').files[0]);
     botao.disabled = true;
     $('product-message').hidden = true;

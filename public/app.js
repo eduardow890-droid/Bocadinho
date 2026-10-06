@@ -9,6 +9,7 @@ const reduzirMovimento=window.matchMedia('(prefers-reduced-motion: reduce)').mat
 const quantidadesAnteriores={};
 const CHAVE='bocadinho_pedido';
 let totalExibido=0,frameTotal=0,pedidoAtual=null,timerPoll=0,timerRelogio=0;
+let checkoutEtapa=1;
 
 const STATUS_PEDIDO={
 	pendente:{titulo:'Aguardando pagamento',detalhe:'Escaneie o QR Code ou use o Pix copia e cola.',etapa:0},
@@ -42,16 +43,19 @@ function montarProdutos(){
 		q[p.id]=0;
 		quantidadesAnteriores[p.id]=0;
 		const d=document.createElement('div');
-		d.className='item';
-		d.innerHTML=(p.imagem_url?'<img class="product-image" src="'+esc(p.imagem_url)+'" alt="" loading="lazy" decoding="async">':'')+'<div class="item-copy"><b>'+esc(p.nome)+'</b><small>'+esc(p.descricao)+'</small><div class="pr">'+brl(p.preco_centavos)+'</div></div><div class="qty"><button type="button" data-id="'+esc(p.id)+'" data-d="-1" aria-label="Diminuir '+esc(p.nome)+'">−</button><span id="q_'+esc(p.id)+'">0</span><button type="button" data-id="'+esc(p.id)+'" data-d="1" aria-label="Aumentar '+esc(p.nome)+'">+</button></div>';
+		d.className='item'+(p.esgotado?' is-sold-out':'');
+		d.innerHTML=(p.imagem_url?'<img class="product-image" src="'+esc(p.imagem_url)+'" alt="Foto de '+esc(p.nome)+'" loading="lazy" decoding="async">':'<div class="product-image product-image-placeholder" aria-hidden="true">🍪</div>')+'<div class="item-copy"><b>'+esc(p.nome)+'</b><small>'+esc(p.descricao||'Doce artesanal feito pela Bocadinho.')+'</small><div class="pr">'+brl(p.preco_centavos)+'</div>'+(p.esgotado?'<strong class="sold-out-label">Esgotado</strong>':'')+'</div><div class="qty"><button type="button" data-id="'+esc(p.id)+'" data-d="-1" aria-label="Diminuir '+esc(p.nome)+'"'+(p.esgotado?' disabled':'')+'>−</button><span id="q_'+esc(p.id)+'" aria-live="polite">0</span><button type="button" data-id="'+esc(p.id)+'" data-d="1" aria-label="Adicionar '+esc(p.nome)+'"'+(p.esgotado?' disabled':'')+'>+</button></div>';
 		box.appendChild(d);
 	});
+	$('cart-summary').open=window.matchMedia('(min-width: 701px)').matches;
 }
 
 box.addEventListener('click',e=>{
 	const b=e.target.closest('button');
 	if(!b)return;
 	const id=b.dataset.id;
+	const produto=PRODUTOS.find(p=>p.id===id);
+	if(!produto||produto.esgotado)return;
 	const quantidadeAnterior=q[id];
 	q[id]=Math.max(0,Math.min(99,q[id]+Number(b.dataset.d)));
 	if(quantidadeAnterior===0&&q[id]===1)reiniciarAnimacao(b.closest('.item'),'is-highlighted');
@@ -87,13 +91,27 @@ function animarTotal(destino){
 function render(){
 	PRODUTOS.forEach(p=>{
 		const quantidade=$('q_'+p.id);
+		if(!quantidade)return;
 		quantidade.textContent=q[p.id];
+		const mais=box.querySelector('button[data-id="'+CSS.escape(p.id)+'"][data-d="1"]');
+		if(mais)mais.disabled=Boolean(p.esgotado)||q[p.id]>=99;
+		const menos=box.querySelector('button[data-id="'+CSS.escape(p.id)+'"][data-d="-1"]');
+		if(menos)menos.disabled=Boolean(p.esgotado)||q[p.id]===0;
 		if(q[p.id]!==quantidadesAnteriores[p.id]&&!reduzirMovimento)reiniciarAnimacao(quantidade,'is-bumping');
 		quantidadesAnteriores[p.id]=q[p.id];
 	});
 	const s=sel(),destino=total();
-	$('resumo').innerHTML=s.length?s.map(p=>'<div class="r"><span>'+q[p.id]+'x '+esc(p.nome)+'</span><span>'+brl(q[p.id]*p.preco_centavos)+'</span></div>').join('')+'<div class="tot"><span>Total dos produtos</span><span id="total-valor">'+brl(Math.round(totalExibido))+'</span></div><small>'+(entrega()?'Uber Envios será pago pelo cliente, da loja até sua casa; valor combinado pelo WhatsApp.':'Retirada sem taxa de entrega.')+'</small>':'Nenhum item selecionado ainda.';
-	$('endwrap').style.display=entrega()?'block':'none';
+	$('resumo').replaceChildren();
+	if(s.length){
+		s.forEach(p=>{const linha=document.createElement('div');linha.className='r';const nome=document.createElement('span');nome.textContent=q[p.id]+'x '+p.nome;const subtotal=document.createElement('span');subtotal.textContent=brl(q[p.id]*p.preco_centavos);linha.append(nome,subtotal);$('resumo').append(linha)});
+		const totalLinha=document.createElement('div');totalLinha.className='tot';const rotulo=document.createElement('span');rotulo.textContent='Total dos produtos';const valor=document.createElement('span');valor.id='total-valor';valor.textContent=brl(Math.round(totalExibido));totalLinha.append(rotulo,valor);$('resumo').append(totalLinha);
+		const nota=document.createElement('small');nota.textContent=entrega()?'Entrega pelo Uber Envios paga separadamente; valor e prazo combinados pelo WhatsApp.':'Retirada no local, sem taxa de entrega.';$('resumo').append(nota);
+	}else $('resumo').append(document.createTextNode('Nenhum item selecionado ainda.'));
+	$('cart-summary-count').textContent=s.reduce((n,p)=>n+q[p.id],0)+' '+(s.reduce((n,p)=>n+q[p.id],0)===1?'item':'itens');
+	$('cart-summary-total').textContent=brl(destino);
+	$('endwrap').hidden=!entrega();
+	$('delivery-note').hidden=!entrega();
+	$('review-delivery-note').hidden=!entrega();
 	if(s.length)animarTotal(destino);
 	else{cancelAnimationFrame(frameTotal);totalExibido=0;}
 }
@@ -103,25 +121,59 @@ const telefoneLimpo=()=>v('telefone').replace(/\D/g,'').replace(/^55(?=\d{10,11}
 const telefoneOk=()=>/^[1-9]{2}(9\d{8}|[2-5]\d{7})$/.test(telefoneLimpo());
 const emailOk=()=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v('email'));
 
-function validar(){
+function validarProdutos(){
 	if(!sel().length)return{msg:'Escolha pelo menos um produto.',campo:box};
-	if(v('nome').length<2)return{msg:'Informe seu nome.',campo:$('nome')};
+	return null;
+}
+
+function validarDados(){
+	if(v('nome').length<2)return{msg:'Informe seu nome (pelo menos 2 caracteres).',campo:$('nome')};
 	if(!telefoneOk())return{msg:'Informe um telefone válido com DDD.',campo:$('telefone')};
 	if(!emailOk())return{msg:'Informe um e-mail válido.',campo:$('email')};
-	if(entrega()&&v('rua').length<3)return{msg:'Informe a rua.',campo:$('rua')};
-	if(entrega()&&!v('numero').length)return{msg:'Informe o número.',campo:$('numero')};
+	if(entrega()&&v('rua').length<3)return{msg:'Informe a rua da entrega.',campo:$('rua')};
+	if(entrega()&&!v('numero').length)return{msg:'Informe o número do endereço.',campo:$('numero')};
 	if(entrega()&&v('regiao').length<2)return{msg:'Informe o bairro.',campo:$('regiao')};
 	if(entrega()&&v('cidade').length<2)return{msg:'Informe a cidade.',campo:$('cidade')};
 	return null;
 }
 
-function confirmarDadosAntesDoPix(){
-	const linhas=sel().map(p=>`${q[p.id]}x ${p.nome} — ${brl(q[p.id]*p.preco_centavos)}`).join('\n');
-	const endereco=entrega()
-		?`\nEntrega:\n${v('rua')}, ${v('numero')}${v('complemento')?', '+v('complemento'):''}\n${v('regiao')} — ${v('cidade')}`
-		:'\nRetirada no local: as instruções serão enviadas após a confirmação.';
-	const observacao=v('obs')?`\nObservação: ${v('obs')}`:'';
-	return window.confirm(`Confira seu pedido antes de gerar o Pix:\n\n${linhas}\n\nTotal dos produtos: ${brl(total())}${endereco}${observacao}\n\nNa entrega, você pagará o Uber Envios separadamente, da loja até sua casa.\n\nClique em OK para gerar o Pix.`);
+function renderRevisao(){
+	const area=$('order-review');
+	area.replaceChildren();
+	const lista=document.createElement('ul');lista.className='review-items';
+	sel().forEach(p=>{const linha=document.createElement('li');const nome=document.createElement('span');nome.textContent=q[p.id]+' × '+p.nome;const preco=document.createElement('strong');preco.textContent=brl(q[p.id]*p.preco_centavos);linha.append(nome,preco);lista.append(linha)});
+	area.append(lista);
+	const totalBox=document.createElement('p');totalBox.className='review-total';totalBox.textContent='Total dos produtos: '+brl(total());area.append(totalBox);
+	const contato=document.createElement('section');contato.className='review-details';
+	const contatoTitulo=document.createElement('h4');contatoTitulo.textContent='Contato';contato.append(contatoTitulo);
+	[["Nome",v('nome')],["WhatsApp",v('telefone')],["E-mail",v('email')]].forEach(([rotulo,valor])=>{const p=document.createElement('p');p.textContent=rotulo+': '+valor;contato.append(p)});
+	const receber=document.createElement('section');receber.className='review-details';
+	const receberTitulo=document.createElement('h4');receberTitulo.textContent=entrega()?'Endereço de entrega':'Retirada';receber.append(receberTitulo);
+	if(entrega()){
+		const linhasEndereco=[`${v('rua')}, ${v('numero')}`,v('complemento'),`${v('regiao')} — ${v('cidade')}`].filter(Boolean);
+		linhasEndereco.forEach(texto=>{const p=document.createElement('p');p.textContent=texto;receber.append(p)});
+	}else{const p=document.createElement('p');p.textContent='A loja enviará as instruções de retirada após a confirmação.';receber.append(p)}
+	if(v('obs')){const obs=document.createElement('section');obs.className='review-details';const h=document.createElement('h4');h.textContent='Observação';const p=document.createElement('p');p.textContent=v('obs');obs.append(h,p);area.append(obs)}
+	area.append(contato,receber);
+}
+
+function irParaEtapa(etapa){
+	checkoutEtapa=etapa;
+	document.querySelectorAll('.checkout-step').forEach((painel,i)=>{painel.hidden=i+1!==etapa;panelState(painel,i+1===etapa)});
+	document.querySelectorAll('[data-checkout-progress]').forEach(item=>{
+		const numero=Number(item.dataset.checkoutProgress);
+		item.classList.toggle('is-current',numero===etapa);
+		item.classList.toggle('is-complete',numero<etapa);
+		if(numero===etapa)item.setAttribute('aria-current','step');else item.removeAttribute('aria-current');
+	});
+	if(etapa===3)renderRevisao();
+	const titulo=$(`checkout-title-${etapa}`);
+	if(titulo){titulo.setAttribute('tabindex','-1');titulo.focus({preventScroll:true})}
+}
+
+function panelState(painel,ativo){
+	painel.classList.toggle('is-current',ativo);
+	painel.setAttribute('aria-hidden',String(!ativo));
 }
 
 function limparValidacao(){
@@ -145,6 +197,15 @@ function marcar(campo){
 	reiniciarAnimacao(campo,'is-shaking');
 }
 
+function definirTipoEntrega(){
+	const entregaAtiva=entrega();
+	$('endwrap').hidden=!entregaAtiva;
+	$('delivery-note').hidden=!entregaAtiva;
+	$('retirada-ajuda').hidden=entregaAtiva;
+	['rua','numero','regiao','cidade'].forEach(id=>{$(id).required=entregaAtiva});
+	render();
+}
+
 /* ---------- envio do pedido ---------- */
 async function enviarPedido(){
 	const btn=$('enviar');
@@ -166,8 +227,8 @@ async function enviarPedido(){
 		if(!r.ok){
 			$('erro').textContent=d.erro||'Não foi possível criar o pedido.';
 			const chave=d.campos&&Object.keys(d.campos)[0];
-			if(chave==='itens')marcar(box);
-			else if(chave&&$(chave))marcar($(chave));
+			if(chave==='itens'){irParaEtapa(1);marcar(box)}
+			else if(chave&&$(chave)){irParaEtapa(2);$('data-error').textContent=d.campos[chave];marcar($(chave))}
 			return;
 		}
 		try{localStorage.setItem(CHAVE,d.id)}catch(e){}
@@ -176,16 +237,37 @@ async function enviarPedido(){
 		$('erro').textContent='Sem conexão. Verifique sua internet e tente de novo.';
 	}finally{
 		btn.disabled=false;
-		btn.textContent='Pagar com Pix';
+		btn.textContent='Confirmar e gerar Pix';
 	}
 }
 
-$('enviar').addEventListener('click',()=>{
+$('continue-to-data').addEventListener('click',()=>{
 	limparValidacao();
-	const falha=validar();
-	$('erro').textContent=falha?falha.msg:'';
-	if(falha){marcar(falha.campo);return;}
-	if(!confirmarDadosAntesDoPix())return;
+	const falha=validarProdutos();
+	$('products-error').textContent=falha?falha.msg:'';
+	if(falha){marcar(falha.campo);return}
+	$('data-error').textContent='';
+	irParaEtapa(2);
+});
+$('back-to-products').addEventListener('click',()=>irParaEtapa(1));
+$('back-to-data').addEventListener('click',()=>irParaEtapa(2));
+$('continue-to-review').addEventListener('click',()=>{
+	limparValidacao();
+	const falha=validarDados();
+	$('data-error').textContent=falha?falha.msg:'';
+	if(falha){marcar(falha.campo);return}
+	$('erro').textContent='';
+	irParaEtapa(3);
+});
+$('enviar').addEventListener('click',()=>{
+	const falha=validarProdutos()||validarDados();
+	if(falha){
+		$('erro').textContent=falha.msg;
+		irParaEtapa(falha.campo===box?1:2);
+		marcar(falha.campo);
+		return;
+	}
+	$('erro').textContent='';
 	enviarPedido();
 });
 
@@ -198,14 +280,16 @@ document.querySelector('.form').addEventListener('input',e=>{
 
 document.querySelectorAll('input[name=tipo]').forEach(opcao=>opcao.addEventListener('change',()=>{
 	$('erro').textContent='';
-	$('retirada-ajuda').hidden=entrega();
-	render();
+	$('data-error').textContent='';
+	definirTipoEntrega();
 }));
 
 /* ---------- painel do Pix ---------- */
 function mostrarPix(d){
 	pedidoAtual={id:d.id,fim:Date.now()+d.restante_ms};
 	$('dados').hidden=true;
+	$('cart-summary').hidden=true;
+	$('checkout-progress').hidden=true;
 	$('pix').hidden=false;
 	$('pix-corpo').hidden=false;
 	$('pix-novo').hidden=true;
@@ -314,6 +398,9 @@ $('pix-novo').addEventListener('click',()=>{
 	pedidoAtual=null;
 	$('pix').hidden=true;
 	$('dados').hidden=false;
+	$('cart-summary').hidden=false;
+	$('checkout-progress').hidden=false;
+	irParaEtapa(1);
 	render();
 	$('pedido').scrollIntoView({behavior:reduzirMovimento?'auto':'smooth'});
 });
@@ -362,6 +449,7 @@ async function iniciar(){
 	try{
 		await carregarProdutos();
 		montarProdutos();
+		definirTipoEntrega();
 	}catch(e){
 		box.innerHTML='<p class="erro">Não foi possível carregar o cardápio agora. Recarregue a página.</p>';
 		$('enviar').disabled=true;

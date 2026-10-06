@@ -11,7 +11,7 @@ const storage = require('../storage');
 
 const uploadImagem = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024, files: 1, fields: 3, parts: 4 },
+  limits: { fileSize: 5 * 1024 * 1024, files: 1, fields: 4, parts: 5 },
   fileFilter: (req, file, cb) => {
     if (['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) return cb(null, true);
     cb(new Error('Envie uma imagem JPEG, PNG ou WebP.'));
@@ -33,7 +33,7 @@ function dadosProduto(body) {
   if (nome.length < 2 || nome.length > 80) throw Object.assign(new Error('O nome deve ter entre 2 e 80 caracteres.'), { status: 400 });
   if (descricao.length > 300) throw Object.assign(new Error('A descrição deve ter no máximo 300 caracteres.'), { status: 400 });
   if (!Number.isSafeInteger(preco) || preco < 1 || preco > 500000) throw Object.assign(new Error('Informe um preço válido de até R$ 5.000,00.'), { status: 400 });
-  return { nome, descricao, preco };
+  return { nome, descricao, preco, esgotado: body.esgotado === 'true' };
 }
 
 router.use(rateLimit({ windowMs: 60 * 1000, limit: 30, standardHeaders: true, legacyHeaders: false }));
@@ -50,7 +50,7 @@ router.use((req, res, next) => {
 
 router.get('/produtos', async (req, res, next) => {
   try {
-    const produtos = (await db.query('SELECT id,nome,descricao,preco_centavos,imagem_url,ativo FROM produtos ORDER BY nome')).rows;
+    const produtos = (await db.query('SELECT id,nome,descricao,preco_centavos,imagem_url,ativo,esgotado FROM produtos ORDER BY nome')).rows;
     res.json(produtos);
   } catch (e) { next(e); }
 });
@@ -61,12 +61,12 @@ router.post('/produtos', receberImagem, async (req, res, next) => {
     const dados = dadosProduto(req.body);
     if (!req.file) return res.status(400).json({ erro: 'Selecione uma foto do doce.' });
     imagem = await storage.enviarImagem(req.file);
-    const id = crypto.randomUUID();
+    const id = crypto.randomBytes(8).toString('hex');
     const produto = (await db.query(`INSERT INTO produtos
-      (id,nome,descricao,preco_centavos,ativo,imagem_url,imagem_path)
-      VALUES ($1,$2,$3,$4,TRUE,$5,$6)
-      RETURNING id,nome,descricao,preco_centavos,imagem_url,ativo`,
-      [id,dados.nome,dados.descricao,dados.preco,imagem.url,imagem.caminho])).rows[0];
+      (id,nome,descricao,preco_centavos,ativo,imagem_url,imagem_path,esgotado)
+      VALUES ($1,$2,$3,$4,TRUE,$5,$6,$7)
+      RETURNING id,nome,descricao,preco_centavos,imagem_url,ativo,esgotado`,
+      [id,dados.nome,dados.descricao,dados.preco,imagem.url,imagem.caminho,dados.esgotado])).rows[0];
     res.status(201).json(produto);
   } catch (e) {
     if (imagem) await storage.excluirImagem(imagem.caminho).catch(() => {});
@@ -85,9 +85,9 @@ router.patch('/produtos/:id', receberImagem, async (req, res, next) => {
     const imagemUrl = imagemNova?.url || null;
     const imagemPath = imagemNova?.caminho || null;
     const produto = (await db.query(`UPDATE produtos SET nome=$1,descricao=$2,preco_centavos=$3,
-      imagem_url=COALESCE($4,imagem_url),imagem_path=COALESCE($5,imagem_path)
-      WHERE id=$6 RETURNING id,nome,descricao,preco_centavos,imagem_url,ativo`,
-      [dados.nome,dados.descricao,dados.preco,imagemUrl,imagemPath,req.params.id])).rows[0];
+      imagem_url=COALESCE($4,imagem_url),imagem_path=COALESCE($5,imagem_path),esgotado=$6
+      WHERE id=$7 RETURNING id,nome,descricao,preco_centavos,imagem_url,ativo,esgotado`,
+      [dados.nome,dados.descricao,dados.preco,imagemUrl,imagemPath,dados.esgotado,req.params.id])).rows[0];
     if (imagemNova && anterior.imagem_path) {
       await storage.excluirImagem(anterior.imagem_path).catch(() => console.warn('[produtos] não foi possível remover foto substituída.'));
     }
