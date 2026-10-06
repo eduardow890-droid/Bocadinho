@@ -68,13 +68,13 @@ html{scroll-padding-top:72px}
 
 /* Brilho progressivo das etapas do pedido */
 @keyframes pix-dot-pulse{
-	0%,100%{transform:translate(-50%,-50%) scale(.88);opacity:.48}
-	50%{transform:translate(-50%,-50%) scale(1.45);opacity:.95}
+	0%,100%{transform:translate(-50%,-50%) scale(.8);opacity:.55}
+	50%{transform:translate(-50%,-50%) scale(1.65);opacity:1}
 }
-.pix-etapas li::before{z-index:1;transition:background-color .3s ease,border-color .3s ease,box-shadow .3s ease}
-.pix-etapas li::after{content:'';position:absolute;top:7px;left:50%;width:20px;height:20px;transform:translate(-50%,-50%);border-radius:50%;background:var(--green);opacity:0;pointer-events:none}
-.pix-etapas li.concluida::before{background:var(--green);border-color:var(--wine);box-shadow:0 0 7px rgba(169,181,107,.8),0 0 14px rgba(169,181,107,.5)}
-.pix-etapas li.concluida::after{opacity:.35;transform:translate(-50%,-50%) scale(1.1)}
-.pix-etapas li.atual::before{background:#c4d77e;border-color:var(--wine);box-shadow:0 0 8px rgba(196,215,126,.95),0 0 18px rgba(169,181,107,.85)}
-.pix-etapas li.atual::after{animation:pix-dot-pulse 1.7s ease-in-out infinite}
-@media(prefers-reduced-motion:reduce){.pix-etapas li.atual::after{animation:none;opacity:.45;transform:translate(-50%,-50%) scale(1.15)}}
+.pix-etapas li::before{z-index:2;transition:background-color .3s ease,border-color .3s ease,box-shadow .3s ease}
+.pix-etapas li::after{content:'';position:absolute;z-index:1;top:7px;left:50%;width:28px;height:28px;transform:translate(-50%,-50%) scale(.65);border:2px solid transparent;border-radius:50%;background:rgba(196,215,126,.22);box-shadow:0 0 0 0 rgba(169,181,107,0);opacity:0;pointer-events:none}
+.pix-etapas li.concluida::before{background:#c4d77e;border-color:var(--wine);box-shadow:0 0 0 2px var(--pale),0 0 9px 3px rgba(169,181,107,.95),0 0 22px 7px rgba(169,181,107,.7)}
+.pix-etapas li.concluida::after{transform:translate(-50%,-50%) scale(1);border-color:rgba(122,14,36,.5);background:rgba(196,215,126,.16);box-shadow:0 0 12px 4px rgba(169,181,107,.72);opacity:1}
+.pix-etapas li.atual::before{background:#e2f49d;border-color:var(--wine);box-shadow:0 0 0 3px var(--pale),0 0 12px 5px rgba(226,244,157,1),0 0 28px 10px rgba(169,181,107,.95)}
+.pix-etapas li.atual::after{border-color:rgba(122,14,36,.72);background:rgba(226,244,157,.25);box-shadow:0 0 18px 7px rgba(196,215,126,.95);animation:pix-dot-pulse 1.25s ease-in-out infinite}
+@media(prefers-reduced-motion:reduce){.pix-etapas li.atual::after{animation:none;opacity:1;transform:translate(-50%,-50%) scale(1.2)}}
