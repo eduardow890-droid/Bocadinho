@@ -5,7 +5,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "preview": "node scripts/preview.js",
+    "test": "node --test"
   },
   "engines": {
     "node": ">=18"

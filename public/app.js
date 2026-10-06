@@ -11,6 +11,30 @@ const CHAVE='bocadinho_pedido';
 let totalExibido=0,frameTotal=0,pedidoAtual=null,timerPoll=0,timerRelogio=0;
 let checkoutEtapa=1;
 
+function tokenAleatorio(){
+	const bytes=new Uint8Array(32);
+	window.crypto.getRandomValues(bytes);
+	let binario='';
+	bytes.forEach(byte=>{binario+=String.fromCharCode(byte)});
+	return btoa(binario).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+
+function lerPedidoSalvo(){
+	try{
+		const salvo=localStorage.getItem(CHAVE);
+		if(!salvo)return null;
+		try{
+			const dados=JSON.parse(salvo);
+			if(dados&&typeof dados==='object'&&typeof dados.token==='string')return dados;
+		}catch(_){/* formato antigo: somente o UUID do pedido */}
+		return {id:salvo,token:salvo,legado:true};
+	}catch(_){return null}
+}
+
+function salvarPedido(dados){
+	try{localStorage.setItem(CHAVE,JSON.stringify(dados))}catch(_){/* retomada opcional */}
+}
+
 const STATUS_PEDIDO={
 	pendente:{titulo:'Aguardando pagamento',detalhe:'Escaneie o QR Code ou use o Pix copia e cola.',etapa:0},
 	pago:{titulo:'Pagamento confirmado',detalhe:'Recebemos seu pedido. A loja vai iniciar o preparo.',etapa:1},
@@ -211,10 +235,13 @@ async function enviarPedido(){
 	const btn=$('enviar');
 	btn.disabled=true;
 	btn.textContent='Gerando Pix...';
+	let acesso=lerPedidoSalvo();
+	if(!acesso||acesso.id||acesso.legado)acesso={id:null,token:tokenAleatorio()};
+	salvarPedido(acesso);
 	try{
 		const r=await fetch('/api/pedidos',{
 			method:'POST',
-			headers:{'Content-Type':'application/json'},
+			headers:{'Content-Type':'application/json','x-order-access-token':acesso.token},
 			body:JSON.stringify({
 				nome:v('nome'),email:v('email'),telefone:v('telefone'),
 				tipo:entrega()?'entrega':'retirada',regiao:v('regiao'),cidade:v('cidade'),
@@ -231,10 +258,11 @@ async function enviarPedido(){
 			else if(chave&&$(chave)){irParaEtapa(2);$('data-error').textContent=d.campos[chave];marcar($(chave))}
 			return;
 		}
-		try{localStorage.setItem(CHAVE,d.id)}catch(e){}
-		mostrarPix(d);
+		acesso.id=d.id;
+		salvarPedido(acesso);
+		mostrarPix(d,acesso.token);
 	}catch(e){
-		$('erro').textContent='Sem conexão. Verifique sua internet e tente de novo.';
+		$('erro').textContent='Sem conexão. Seus dados de retomada foram preservados; tente novamente sem recarregar ou fechar a página.';
 	}finally{
 		btn.disabled=false;
 		btn.textContent='Confirmar e gerar Pix';
@@ -285,26 +313,41 @@ document.querySelectorAll('input[name=tipo]').forEach(opcao=>opcao.addEventListe
 }));
 
 /* ---------- painel do Pix ---------- */
-function mostrarPix(d){
-	pedidoAtual={id:d.id,fim:Date.now()+d.restante_ms};
+function exibirDadosPix(d){
+	const disponivel=Boolean(d.pix);
+	const qr=$('pix-qr');
+	if(disponivel&&d.pix.qrBase64){
+		qr.src='data:image/png;base64,'+d.pix.qrBase64;
+		qr.hidden=false;
+	}else{
+		qr.removeAttribute('src');
+		qr.hidden=true;
+	}
+	$('pix-code-label').hidden=!disponivel;
+	$('pix-code').hidden=!disponivel;
+	$('pix-copiar').hidden=!disponivel;
+	$('pix-code').value=disponivel?(d.pix.copiaECola||''):'';
+	$('pix-total').textContent=brl(d.total_centavos);
+	if(d.status==='pendente'&&!disponivel){
+		$('pix-status').textContent='Preparando seu Pix';
+		$('pix-status-detail').textContent='Estamos finalizando a cobrança. Esta tela será atualizada automaticamente; não faça outro pedido.';
+	}
+}
+
+function mostrarPix(d,tokenAcesso){
+	pedidoAtual={id:d.id,token:tokenAcesso||lerPedidoSalvo()?.token,fim:Date.now()+d.restante_ms};
 	$('dados').hidden=true;
 	$('cart-summary').hidden=true;
 	$('checkout-progress').hidden=true;
 	$('pix').hidden=false;
 	$('pix-corpo').hidden=false;
 	$('pix-novo').hidden=true;
-	const qr=$('pix-qr');
-	if(d.pix?.qrBase64){
-		qr.src='data:image/png;base64,'+d.pix.qrBase64;
-		qr.hidden=false;
-	}else{
-		// O sandbox pode não devolver a imagem; o copia-e-cola continua disponível.
-		qr.removeAttribute('src');
-		qr.hidden=true;
-	}
-	$('pix-code').value=d.pix?.copiaECola||'';
-	$('pix-total').textContent=brl(d.total_centavos);
+	exibirDadosPix(d);
 	atualizarStatus(d.status);
+	if(d.status==='pendente'&&!d.pix){
+		$('pix-status').textContent='Preparando seu Pix';
+		$('pix-status-detail').textContent='Estamos finalizando a cobrança. Esta tela será atualizada automaticamente; não faça outro pedido.';
+	}
 	$('pix-cancelar').hidden=d.status!=='pendente';
 	$('pix-cancelar').disabled=false;
 	if(d.status==='pendente')iniciarRelogio();
@@ -333,13 +376,30 @@ function iniciarPolling(){
 
 async function consultarStatus(){
 	if(!pedidoAtual)return;
-	$('pix-status-detail').textContent='Verificando o pagamento com o Mercado Pago...';
 	try{
-		const r=await fetch('/api/pedidos/'+encodeURIComponent(pedidoAtual.id),{cache:'no-store'});
+		const r=await fetch('/api/pedidos/'+encodeURIComponent(pedidoAtual.id),{
+			cache:'no-store',headers:{'x-order-access-token':pedidoAtual.token||''}
+		});
+		if(r.status===404){
+			clearInterval(timerPoll);clearInterval(timerRelogio);
+			try{localStorage.removeItem(CHAVE)}catch(_){}
+			$('pix-corpo').hidden=true;
+			$('pix-cancelar').hidden=true;
+			$('pix-status').textContent='Acompanhamento indisponível';
+			$('pix-status-detail').textContent='Este acesso foi revogado ou o pedido não está mais disponível. Fale com a loja pelo WhatsApp.';
+			return;
+		}
 		if(!r.ok)return;
 		const d=await r.json();
 		atualizarStatus(d.status);
-		if(d.status==='pendente')return;
+		if(d.status==='pendente'){
+			if(d.pix)exibirDadosPix(d);
+			else{
+				$('pix-status').textContent='Preparando seu Pix';
+				$('pix-status-detail').textContent='Estamos finalizando a cobrança. Esta tela será atualizada automaticamente; não faça outro pedido.';
+			}
+			return;
+		}
 		$('pix-corpo').hidden=true;
 		$('pix-cancelar').hidden=true;
 		clearInterval(timerRelogio);
@@ -367,7 +427,9 @@ async function cancelarPedido(){
 	const btn=$('pix-cancelar');
 	btn.disabled=true;
 	try{
-		const r=await fetch('/api/pedidos/'+encodeURIComponent(pedidoAtual.id)+'/cancelar',{method:'POST'});
+		const r=await fetch('/api/pedidos/'+encodeURIComponent(pedidoAtual.id)+'/cancelar',{
+			method:'POST',headers:{'x-order-access-token':pedidoAtual.token||''}
+		});
 		const d=await r.json().catch(()=>({}));
 		if(!r.ok)throw new Error(d.erro||'Não foi possível cancelar o pedido.');
 		atualizarStatus('cancelado');
@@ -406,16 +468,21 @@ $('pix-novo').addEventListener('click',()=>{
 });
 
 async function retomarPedido(){
-	let id=null;
-	try{id=localStorage.getItem(CHAVE)}catch(e){}
-	if(!id)return;
+	const salvo=lerPedidoSalvo();
+	if(!salvo)return;
 	try{
-		const r=await fetch('/api/pedidos/'+encodeURIComponent(id));
-		if(!r.ok){localStorage.removeItem(CHAVE);return;}
+		const url=salvo.id
+			?'/api/pedidos/'+encodeURIComponent(salvo.id)
+			:'/api/pedidos/retomar';
+		const r=await fetch(url,{cache:'no-store',headers:{'x-order-access-token':salvo.token||''}});
+		if(!r.ok){
+			if(r.status===404)try{localStorage.removeItem(CHAVE)}catch(_){}
+			return;
+		}
 		const d=await r.json();
-		if(d.status==='pendente'&&d.pix)mostrarPix(d);
-		else if(!STATUS_FINAIS.has(d.status))mostrarPix(d);
-		else localStorage.removeItem(CHAVE);
+		salvarPedido({id:d.id,token:salvo.token});
+		if(!STATUS_FINAIS.has(d.status))mostrarPix(d,salvo.token);
+		else try{localStorage.removeItem(CHAVE)}catch(_){}
 	}catch(e){}
 }
 

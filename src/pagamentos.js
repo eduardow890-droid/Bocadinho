@@ -52,9 +52,12 @@ async function processarPagamento(referencia) {
   if (await svc.marcarPago(pedido.id)) {
     console.log(`[pagamento] pedido ${pedido.id.slice(0, 8)} pago.`);
     await notificarLoja(await svc.obterPedido(pedido.id));
-  } else if (['expirado', 'cancelado'].includes(pedido.status)) {
-    await svc.mudarStatus(pedido.id, ['expirado', 'cancelado'], 'revisar');
-    console.error(`[pagamento] pedido ${pedido.id.slice(0, 8)} foi pago após expirar/cancelar. Revisar.`);
+  } else {
+    const estadoAtual = await svc.obterPedido(pedido.id);
+    if (estadoAtual && ['expirado', 'cancelado', 'cancelando'].includes(estadoAtual.status)) {
+      await svc.mudarStatus(pedido.id, [estadoAtual.status], 'revisar');
+      console.error(`[pagamento] pedido ${pedido.id.slice(0, 8)} foi pago após expirar/cancelar. Revisar.`);
+    }
   }
 }
 

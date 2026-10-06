@@ -3,6 +3,14 @@ const cfg = require('./config');
 
 const API = 'https://api.mercadopago.com';
 
+function chaveCancelamento(orderId) {
+  const bytes = crypto.createHash('sha256').update(`bocadinho:cancelar:${orderId}`).digest().subarray(0, 16);
+  bytes[6] = (bytes[6] & 0x0f) | 0x50;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = bytes.toString('hex');
+  return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+}
+
 async function chamar(metodo, caminho, corpo, chaveIdempotencia) {
   const r = await fetch(API + caminho, {
     method: metodo,
@@ -25,7 +33,7 @@ async function chamar(metodo, caminho, corpo, chaveIdempotencia) {
 }
 
 /** Cria uma order Pix pelo fluxo de sandbox da Orders API. */
-async function criarPix({ pedido, cliente }) {
+async function criarPix({ pedido, cliente, chaveIdempotencia = pedido.id }) {
   // No sandbox do Pix, APRO é o valor oficial que faz a order ser aprovada
   // automaticamente. Em produção, usamos os dados reais do comprador.
   const teste = !cfg.producao;
@@ -45,7 +53,7 @@ async function criarPix({ pedido, cliente }) {
       first_name: teste ? 'APRO' : cliente.nome.split(' ')[0]
     },
     transactions: { payments: [pagamento] },
-  }, pedido.id); // idempotência: mesma chave = mesma cobrança, mesmo se repetir a chamada
+  }, chaveIdempotencia); // chave persistida antes da chamada; toda repetição recupera a mesma cobrança
 
   const p = o.transactions?.payments?.[0];
   const t = p?.payment_method;
@@ -67,7 +75,7 @@ const cancelarOrder = id => chamar(
   'POST',
   `/v1/orders/${encodeURIComponent(id)}/cancel`,
   undefined,
-  crypto.randomUUID()
+  chaveCancelamento(id)
 );
 const consultar = id => chamar('GET', `/v1/payments/${encodeURIComponent(id)}`);
 const cancelar = id => chamar('PUT', `/v1/payments/${encodeURIComponent(id)}`, { status: 'cancelled' });

@@ -1,6 +1,7 @@
 const db = require('./db');
 const mp = require('./mercadopago');
 const svc = require('./pedidos');
+const cobrancas = require('./cobrancas');
 const { processarPagamento } = require('./pagamentos');
 
 let rodando = false;
@@ -13,6 +14,7 @@ async function reconciliar() {
   if (rodando) return;
   rodando = true;
   try {
+    await cobrancas.processarPendentes(50);
     const pendentes = (await db.query(`
       SELECT p.id, p.expira_em, pg.mp_payment_id, pg.mp_order_id
       FROM pedidos p LEFT JOIN pagamentos pg ON pg.pedido_id = p.id
@@ -21,7 +23,11 @@ async function reconciliar() {
     for (const ped of pendentes) {
       try {
         if (!ped.mp_payment_id) { // cobrança nunca foi criada
-          if (ped.expira_em < Date.now()) await svc.mudarStatus(ped.id, ['pendente'], 'cancelado');
+          if (ped.expira_em < Date.now()) {
+            await svc.mudarStatus(ped.id, ['pendente'], 'cancelado');
+            await db.query(`UPDATE tentativas_cobranca SET estado='abandonada',lease_ate=NULL,atualizado_em=$1
+              WHERE pedido_id=$2 AND estado='pendente' AND tentativas=0`, [Date.now(),ped.id]);
+          }
           continue;
         }
         if (String(ped.mp_payment_id).startsWith('simulado-')) continue;

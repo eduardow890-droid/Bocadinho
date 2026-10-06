@@ -1,10 +1,20 @@
 const crypto = require('crypto');
 const db = require('./db');
 const cfg = require('./config');
+const acessoPedido = require('./acesso-pedido');
 
 class ErroNegocio extends Error { constructor(msg, status = 400) { super(msg); this.status = status; } }
 
-async function criarPedido(d, expiraMin) {
+async function criarPedido(d, expiraMin, tokenAcesso) {
+  const tokenHash = acessoPedido.hashToken(tokenAcesso);
+  if (!tokenHash) throw new ErroNegocio('Não foi possível proteger o acompanhamento do pedido. Recarregue a página e tente novamente.');
+
+  const existente = (await db.query(`
+    SELECT p.* FROM acesso_pedido a JOIN pedidos p ON p.id=a.pedido_id
+    WHERE a.token_hash=$1 AND a.revogado_em IS NULL AND a.expira_em>$2`,
+  [tokenHash, Date.now()])).rows[0];
+  if (existente) return { ...existente, reutilizado: true };
+
   const pend = await db.query(`SELECT COUNT(*)::int AS n FROM pedidos WHERE status='pendente' AND (telefone=$1 OR email=$2)`, [d.telefone, d.email]);
   if (pend.rows[0].n >= 3) throw new ErroNegocio('Você já tem pedidos aguardando pagamento. Conclua ou aguarde expirar.', 429);
 
@@ -25,22 +35,35 @@ async function criarPedido(d, expiraMin) {
   const agora = Date.now();
   const expira = agora + expiraMin * 60000;
   const endereco = d.tipo === 'entrega' ? [d.rua, d.numero, d.complemento].filter(Boolean).join(', ') : '';
-  await db.withTransaction(async client => {
+  try {
+    await db.withTransaction(async client => {
     await client.query(`INSERT INTO pedidos
       (id,nome,email,telefone,tipo,regiao,cidade,rua,numero,complemento,endereco,obs,total_centavos,status,criado_em,expira_em)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'pendente',$14,$15)`,
       [id,d.nome,d.email,d.telefone,d.tipo,d.regiao,d.tipo === 'entrega' ? d.cidade : '',d.tipo === 'entrega' ? d.rua : '',d.tipo === 'entrega' ? d.numero : '',d.tipo === 'entrega' ? d.complemento : '',endereco,d.obs,total,agora,expira]);
+    await client.query(`INSERT INTO acesso_pedido (pedido_id,token_hash,expira_em,criado_em)
+      VALUES ($1,$2,$3,$4)`, [id,tokenHash,acessoPedido.expiracaoToken(agora),agora]);
+    await client.query(`INSERT INTO tentativas_cobranca
+      (pedido_id,chave_idempotencia,estado,tentativas,proxima_tentativa,criado_em,atualizado_em)
+      VALUES ($1,$2,'pendente',0,$3,$3,$3)`, [id,id,agora]);
     for (const it of itens) {
       await client.query(`INSERT INTO pedido_itens (pedido_id,produto_id,nome,qtd,preco_unit_centavos) VALUES ($1,$2,$3,$4,$5)`,
         [id,it.produto_id,it.nome,it.qtd,it.preco_unit_centavos]);
     }
-  });
-  return { id, total_centavos: total, expira_em: expira, itens };
-}
-
-async function registrarPagamento(pedidoId, c) {
-  await db.query(`INSERT INTO pagamentos (pedido_id,mp_payment_id,mp_order_id,status,valor_centavos,qr_code,qr_base64,criado_em)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`, [pedidoId,String(c.mpId),c.mpOrderId ? String(c.mpOrderId) : null,c.status,c.valorCentavos,c.qr,c.qrBase64,Date.now()]);
+    });
+  } catch (e) {
+    // Requisições repetidas com o mesmo token de checkout recuperam o pedido
+    // que venceu a corrida para inserir a credencial única.
+    if (e.code === '23505') {
+      const repetido = (await db.query(`
+        SELECT p.* FROM acesso_pedido a JOIN pedidos p ON p.id=a.pedido_id
+        WHERE a.token_hash=$1 AND a.revogado_em IS NULL AND a.expira_em>$2`,
+      [tokenHash,Date.now()])).rows[0];
+      if (repetido) return { ...repetido, reutilizado: true };
+    }
+    throw e;
+  }
+  return { id, total_centavos: total, expira_em: expira, itens, reutilizado: false };
 }
 
 async function obterPedido(id) { const r = await db.query('SELECT * FROM pedidos WHERE id=$1', [id]); return r.rows[0]; }
@@ -51,6 +74,7 @@ async function visaoPublica(pedido) {
   if (pedido.status === 'pendente') {
     const pg = await obterPagamento(pedido.id);
     if (pg) out.pix = { copiaECola: pg.qr_code, qrBase64: pg.qr_base64 };
+    else out.pix_em_processamento = true;
   }
   return out;
 }
@@ -67,4 +91,4 @@ async function mudarStatus(pedidoId, de, para) {
   return r.rowCount === 1;
 }
 
-module.exports = { ErroNegocio, criarPedido, registrarPagamento, obterPedido, obterPagamento, visaoPublica, marcarPago, mudarStatus };
+module.exports = { ErroNegocio, criarPedido, obterPedido, obterPagamento, visaoPublica, marcarPago, mudarStatus };

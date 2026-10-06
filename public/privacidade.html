@@ -69,8 +69,8 @@
 
       <section>
         <h2>6. Armazenamento no navegador e acompanhamento</h2>
-        <p>O site não utiliza cookies próprios para publicidade ou rastreamento. Para permitir que você retome o acompanhamento no mesmo navegador, inclusive depois de fechar e reabrir a página, o identificador do pedido fica no armazenamento local (<em>localStorage</em>), que é diferente de um cookie. O site remove essa chave quando detecta que o pedido terminou, foi cancelado ou expirou; se o pedido ainda estiver pendente, ela é mantida para permitir a retomada.</p>
-        <p>O identificador funciona como uma chave para consultar o status, total e, enquanto o pedido estiver pendente, os dados Pix. Não o publique nem o compartilhe com terceiros. Em dispositivos compartilhados, outras pessoas com acesso ao mesmo navegador podem retomar o acompanhamento. Na área administrativa, o navegador mantém o token de acesso apenas durante a sessão.</p>
+        <p>O site não utiliza cookies próprios para publicidade ou rastreamento. Para permitir que você retome o acompanhamento no mesmo navegador, inclusive depois de fechar e reabrir a página, o navegador guarda um token aleatório de acesso ao pedido em armazenamento local (<em>localStorage</em>), diferente de um cookie. O servidor armazena somente o hash desse token, com prazo de até 90 dias; o navegador remove a informação local quando detecta que o pedido terminou, foi cancelado ou expirou.</p>
+        <p>Esse token permite consultar status, total e, enquanto o pedido estiver pendente, os dados Pix; ele também autoriza uma tentativa de cancelamento. Não o publique nem o compartilhe. Em dispositivos compartilhados, outras pessoas com acesso ao mesmo navegador podem acompanhar ou cancelar o pedido. O token pode ser revogado pela loja. Para pedidos feitos antes da implantação desse mecanismo, o UUID continua aceito temporariamente por até 90 dias da criação.</p>
       </section>
 
       <section>

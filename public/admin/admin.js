@@ -191,6 +191,10 @@
     const actions = el('div', undefined, 'order-actions');
     const whatsapp = criarWhatsapp(pedido);
     if (whatsapp) actions.append(whatsapp);
+    const revogar = el('button', 'Revogar acesso do cliente', 'button secondary');
+    revogar.type = 'button';
+    revogar.addEventListener('click', () => revogarAcesso(pedido.id, revogar));
+    actions.append(revogar);
     const proximos = { pago: ['em_preparo', 'Iniciar preparo'], em_preparo: ['enviado', 'Marcar enviado'], enviado: ['concluido', 'Concluir'] };
     if (proximos[pedido.status]) {
       const [novoStatus, texto] = proximos[pedido.status];
@@ -260,6 +264,18 @@
       await carregar();
     } catch (erro) {
       mostrarMensagem(erro.message, true);
+      botao.disabled = false;
+    }
+  }
+
+  async function revogarAcesso(id, botao) {
+    if (!window.confirm('Revogar o token de acompanhamento deste pedido? O cliente deixará de consultar ou cancelar o pedido neste navegador.')) return;
+    botao.disabled = true;
+    try {
+      await requisicao(`/api/admin/pedidos/${encodeURIComponent(id)}/revogar-acesso`, { method: 'POST' });
+      mostrarMensagem('Acesso de acompanhamento revogado.');
+    } catch (erro) {
+      mostrarMensagem(erro.message || 'Não foi possível revogar o acesso.', true);
       botao.disabled = false;
     }
   }

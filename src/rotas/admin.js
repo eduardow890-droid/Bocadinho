@@ -8,6 +8,7 @@ const svc = require('../pedidos');
 const { notificarLoja } = require('../notificar');
 const { UUID } = require('../validacao');
 const storage = require('../storage');
+const acessoPedido = require('../acesso-pedido');
 
 const uploadImagem = multer({
   storage: multer.memoryStorage(),
@@ -126,6 +127,17 @@ router.get('/pedidos/:id', async (req, res, next) => {
   const itens = (await db.query('SELECT nome,qtd,preco_unit_centavos FROM pedido_itens WHERE pedido_id=$1', [pedido.id])).rows;
   res.json({ ...pedido, itens });
  } catch (e) { next(e); }
+});
+
+router.post('/pedidos/:id/revogar-acesso', async (req, res, next) => {
+  try {
+    if (!UUID.test(req.params.id)) return res.status(400).json({ erro: 'Pedido inválido.' });
+    const pedido = await svc.obterPedido(req.params.id);
+    if (!pedido) return res.status(404).json({ erro: 'Pedido não encontrado.' });
+    const revogado = await acessoPedido.revogar(pedido.id);
+    if (!revogado) return res.status(409).json({ erro: 'O pedido não possui acesso ativo para revogar.' });
+    res.json({ ok: true });
+  } catch (e) { next(e); }
 });
 
 function inicioDoDiaSaoPaulo() {

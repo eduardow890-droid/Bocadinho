@@ -1,12 +1,12 @@
 # Relatório de segurança e persistência — Bocadinho
 
-Data da revisão: 03/10/2026
+Data da revisão: 06/10/2026
 
 ## Resumo
 
-O sistema possui uma base de segurança adequada para um MVP de pedidos com Pix, mas ainda não deve ser considerado pronto para uma operação pública sem backup, HTTPS, restrição do painel administrativo e rotação dos segredos usados nos testes.
+O sistema possui controles importantes para um MVP de pedidos com Pix, mas esta revisão encontrou riscos financeiros e operacionais que devem ser tratados antes de considerar o fluxo resiliente para operação pública. A prioridade é garantir recuperação de cobranças quando houver falha ao gravar o pagamento local, confirmar a configuração do proxy no Render, rotacionar credenciais expostas e definir backup/retensão.
 
-Classificação geral atual: **médio**.
+Classificação geral do código: **médio-alto até a correção do fluxo de criação/reconciliação da cobrança**. A configuração real de produção não foi verificada.
 
 Não foi feito um pentest externo nem uma auditoria de infraestrutura. Os níveis abaixo são uma avaliação do código presente no repositório.
 
@@ -36,7 +36,7 @@ O checkout solicita endereço separado para entrega (rua, número, complemento, 
 | Idempotência | ✅ Implementado | Alto | Criação e confirmação evitam duplicidade. |
 | Autorização do admin | ✅ Implementado | Alto | Token em header, comparação em tempo constante e rate limit. |
 | Proteção adicional do admin | ⚠️ Parcial | Alto | O código exige IP em `ADMIN_ALLOWED_IPS` em produção; ainda é necessário configurar e testar a lista e confirmar a cadeia de proxy no Render. |
-| Exposição de dados públicos | ✅ Parcial | Alto | UUID não sequencial e resposta pública reduzida; o UUID deve ser tratado como segredo de acompanhamento. |
+| Exposição de dados públicos | ✅ Parcial | Alto | Resposta pública reduzida; pedidos novos exigem token aleatório separado, com hash no banco. Pedidos legados mantêm UUID por até 90 dias. |
 | Proteção contra pagamento tardio | ✅ Implementado | Alto | Pagamento após expiração/cancelamento vai para `revisar`. |
 | Persistência do banco no Supabase | ⚠️ Pendente | Crítico | O código usa PostgreSQL; falta confirmar configuração real, acesso, backup e restauração no ambiente de produção. |
 | Backup e restauração | ⚠️ Pendente | Crítico | Ainda é necessário automatizar backup e testar a restauração. |
@@ -44,16 +44,17 @@ O checkout solicita endereço separado para entrega (rua, número, complemento, 
 | Dependências auditadas | ✅ Verificado (produção) | Médio | `npm audit --omit=dev` encontrou 0 vulnerabilidades conhecidas; repetir periodicamente. |
 | Minimização de logs | ✅ Parcial | Médio | Removidos dados pessoais e respostas detalhadas do Mercado Pago dos logs da aplicação; revisar logs e retenção no provedor. |
 | CSRF do painel | ✅ Parcial | Médio | O token em header reduz CSRF tradicional; manter admin fora de acesso público e usar HTTPS. |
-| Autenticação de clientes | ⚠️ Não implementada | Médio | O acompanhamento atual usa o UUID do pedido; para dados mais sensíveis, adicionar token separado ou login. |
+| Autorização de acompanhamento | ✅ Implementado com compatibilidade legada | Alto | Token de 256 bits separado do UUID, hash no banco, validade de 90 dias e revogação administrativa; pedidos antigos usam UUID temporariamente. |
 
 ## Persistência do usuário e dos pedidos
 
 - O código usa PostgreSQL por meio de `DATABASE_URL`; a configuração documentada usa Supabase.
 - Em produção, a conexão força `sslmode=verify-full` e exige `DB_SSL_CA`; `DB_SSL=false` só desativa TLS fora de produção.
 - Produtos, itens, pagamentos, status e eventos de webhook são persistidos no banco.
-- O navegador guarda temporariamente apenas o ID do pedido em `sessionStorage`, para retomar o acompanhamento durante a sessão.
-- O `sessionStorage` é apagado quando o pedido chega a um estado final.
-- Se o navegador, sessão ou dispositivo forem trocados, o cliente perde o acesso rápido ao acompanhamento. Isso não apaga o pedido do banco.
+- O navegador guarda ID e token de acompanhamento em `localStorage`, para retomar o pedido no mesmo navegador após fechar e reabrir a página.
+- O `localStorage` é apagado quando o pedido chega a um estado final.
+- O token autoriza consulta do Pix pendente e tentativa de cancelamento; em dispositivo compartilhado, outra pessoa com acesso ao navegador pode retomar esse acesso. O proprietário pode revogá-lo no painel.
+- Por até 90 dias, pedidos anteriores à migração continuam aceitando o UUID como credencial.
 - O banco não deve ficar em armazenamento temporário do provedor de hospedagem.
 
 
@@ -64,7 +65,7 @@ O checkout solicita endereço separado para entrega (rua, número, complemento, 
 1. **Perda de dados sem backup:** falha do disco ou do provedor pode apagar pedidos. Configurar cópia automática, retenção e teste de restauração.
 2. **Admin exposto na internet:** além do token, configure `ADMIN_ALLOWED_IPS` no Render e valide a restrição de IP na implantação. A allowlist do Express depende do IP informado pelo proxy.
 3. **Segredos de teste expostos:** tokens que tenham sido compartilhados em terminal, editor, captura ou conversa devem ser revogados e substituídos antes do deploy.
-4. **UUID como credencial de pedido:** quem obtiver o UUID pode consultar o status e os dados Pix enquanto pendentes e tentar cancelar o pedido. A resposta não inclui dados pessoais, mas um token de acompanhamento separado e aleatório seria mais robusto.
+4. **Credencial bearer no navegador:** quem obtiver o token do `localStorage` pode consultar ou tentar cancelar o pedido. Revogá-lo pelo admin se o dispositivo for compartilhado/perdido; remover a compatibilidade por UUID após a janela legada de 90 dias.
 
 ### Médio
 
@@ -91,9 +92,36 @@ Escopo: revisão estática do código e da configuração versionada, sem pentes
 - `node --check` passou nos arquivos JavaScript do servidor, rotas e frontend.
 - As alterações desta auditoria passaram pela verificação sintática, mas não por testes integrados de banco ou Mercado Pago.
 - `package.json` não define suíte de testes. Não foram executados testes integrados de pagamento, webhook ou banco, nem testes dinâmicos de segurança.
-- `server.js` confia em um salto de proxy (`trust proxy = 1`). A regra de IP do admin depende de a topologia e os cabeçalhos do Render corresponderem a essa configuração. Validar em produção, tentar acesso de IP permitido e não permitido e confirmar que `/api/webhook` continua acessível.
+- `server.js` confia em três saltos de proxy (`trust proxy = 3`). A regra de IP do admin depende de a topologia e os cabeçalhos do Render corresponderem exatamente a essa configuração. Validar em produção, tentar acesso de IP permitido e não permitido e confirmar que `/api/webhook` continua acessível.
 - A restrição por `ADMIN_ALLOWED_IPS` está no código, mas não é possível confirmar neste repositório se a variável foi configurada no Render.
 - O projeto declara `node >=18`; o operador deve fixar uma versão LTS de Node.js ainda suportada na implantação.
+
+## Auditoria técnica estática — atualização 06/10/2026
+
+Escopo: leitura do código atual, revisão de dependências e metadados Git. Não houve pentest, teste contra Render/Supabase/Mercado Pago de produção nem leitura dos valores do `.env`.
+
+### Achados priorizados e estado das correções
+
+1. **Alto — mitigado no código; aguarda teste integrado.** A tabela `tentativas_cobranca` agora é gravada na mesma transação do pedido antes de chamar o Mercado Pago. A chamada usa chave idempotente persistida; falhas são reagendadas com backoff e lease, e o job tenta recuperar o vínculo. Pedidos legados pendentes sem linha de pagamento recebem tentativa de migração usando o UUID já usado como chave. Ainda é necessário comprovar no sandbox as falhas entre a resposta externa e a persistência, reinício do processo e resposta HTTP 202. Evidência: `src/db.js`, `src/cobrancas.js`, `src/rotas/pedidos.js`, `src/jobs.js`.
+2. **Médio — mitigado para novos pedidos; janela legada limitada a 90 dias.** Novas rotas públicas exigem token aleatório de 256 bits, armazenado apenas como hash, distinto do UUID e enviado em `x-order-access-token`. O token expira em 90 dias e pode ser revogado pelo admin. Pedidos anteriores, sem hash, aceitam o UUID apenas durante 90 dias da criação. O token no navegador é bearer credential e fica no `localStorage`; proteger contra XSS e validar a remoção/revogação. Evidência: `src/acesso-pedido.js`, `src/rotas/pedidos.js`, `src/rotas/admin.js`, `public/app.js`.
+3. **Médio, condicionado à infraestrutura — `trust proxy = 3` é uma suposição fixa.** Se os caminhos de rede tiverem quantidade diferente de saltos ou houver caminhos alternativos, `req.ip` pode identificar um proxy ou confiar em valor encaminhado indevidamente, afetando a allowlist de admin e rate limits por IP. Confirmar topologia e cabeçalhos reais do Render; preferir confiar em sub-redes/entrada conhecida se o provedor documentar os endereços, em vez de confiar apenas numa quantidade fixa. Evidência: `server.js`.
+4. **Médio — webhook ainda depende da reconciliação.** O evento é persistido e recebe HTTP 200 antes de `processarPagamento` terminar. Em caso de falha, a mesma entrega é deduplicada e reconhecida; a recuperação depende dos jobs periódicos. O outbox agora recupera a criação/vínculo da cobrança, mas não é uma fila de tentativas de processamento de webhook; continua recomendável adicionar estados/retry próprios e paginação. Evidência: `src/rotas/webhook.js`, `src/jobs.js`.
+5. **Médio — o limite de pedidos pendentes por contato admite corrida.** A contagem por telefone/e-mail ocorre antes da transação de criação; requisições paralelas podem todas observar valor abaixo do limite. Tornar a verificação serializável/atômica ou aplicar bloqueio por contato. Evidência: `src/pedidos.js`.
+6. **Médio, condicionado à configuração — URL arbitrária/HTTP para Storage recebe a chave service-role.** O código permite `http://` e qualquer host em `SUPABASE_URL` e envia a chave administrativa nos cabeçalhos. Uma configuração incorreta pode transmitir a chave a terceiro sem TLS. Exigir HTTPS e validar o host esperado do projeto Supabase. Evidência: `src/storage.js`.
+7. **Médio — dados de alergias/saúde podem ser enviados em campo livre.** O checkout sugere que alergias sejam informadas; essa informação pode ser dado pessoal sensível. A política reconhece que falta uma hipótese legal específica implementada. Definir a base legal, minimizar o dado e obter consentimento específico e destacado se essa for a hipótese adotada, antes da coleta. Evidência: `public/index.html`, `public/privacidade.html`.
+8. **Médio — retenção indefinida de dados de pedidos e eventos.** Não há exclusão automática nem política de retenção executável no código. Definir prazo por categoria, descarte/anonimização e retenção de backups. Evidência: `src/db.js`, `public/privacidade.html`.
+9. **Baixo — uploads públicos mantêm os bytes e metadados originais.** A aplicação valida MIME e assinaturas iniciais, mas não decodifica/regrava imagem para remover EXIF; fotos podem revelar metadados como localização. Reprocessar imagens e remover metadados antes de torná-las públicas. Evidência: `src/storage.js`.
+10. **Resolvido no código — respostas públicas com Pix usam `Cache-Control: no-store`.** Confirmar o cabeçalho na implantação publicada. Evidência: `src/rotas/pedidos.js`.
+11. **Baixo — `.env` local com permissão `664`.** O arquivo não está versionado e `.gitignore` o exclui, mas o grupo local também pode lê-lo. Restringir as permissões do arquivo a `600` e controlar membros do grupo.
+12. **Baixo — relatório/checklist requer atualização contínua.** A inicialização desativa o produto legado `t1`; ele não deve ser reativado pelo painel caso a descontinuação seja permanente. Remover o registro do catálogo mantendo snapshots em `pedido_itens`, ou proteger esse ID de reativação.
+
+### Controles verificados e limites
+
+- `.env` não aparece como arquivo rastreado pelo Git e os arquivos comuns de chave/certificado pesquisados não apareceram como rastreados. Isso não verifica refs remotas ou segredos em histórico externo. **Credenciais de produção anteriormente expostas na conversa devem ser rotacionadas.**
+- `npm audit` reportou **0 vulnerabilidades conhecidas** na árvore de dependências auditada nesta execução.
+- `node --check` passou para todos os arquivos JavaScript de `src/`, `public/`, `scripts/` e `server.js`.
+- `npm test` executou 5 testes unitários de formato/hash/prazo do token e backoff; não substituem testes integrados de banco/pagamento/webhook.
+- A implantação real, `ADMIN_ALLOWED_IPS`, CA/TLS do Supabase, bucket, HTTPS e política de backup não podem ser comprovados pelo clone local.
 
 ## Checklist antes do deploy
 

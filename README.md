@@ -117,6 +117,14 @@ O painel `/admin` permite adicionar produtos com foto, editar nome/descrição/p
 
 O serviço cria automaticamente as colunas de imagem na tabela `produtos`; produtos desativados são ocultados do cardápio público, sem apagar o histórico dos pedidos. Os produtos padrão são inseridos apenas quando ainda não existem, para preservar alterações feitas pelo dono no painel.
 
+### Recuperação do Pix e acesso do cliente
+
+O pedido, a chave idempotente e a tentativa inicial de cobrança são gravados juntos antes da chamada ao Mercado Pago. Se a resposta externa ou a gravação do pagamento falhar, o job retenta com atraso crescente usando a mesma chave, para recuperar a mesma Order sem criar uma cobrança duplicada. A API pode responder HTTP 202 enquanto o Pix está sendo preparado; o checkout acompanha o pedido e mostra o código assim que ficar disponível. Pedidos pendentes anteriores à migração recebem tentativa de recuperação com o UUID já usado como chave idempotente.
+
+O navegador gera um token aleatório antes de enviar o pedido e guarda-o localmente para suportar reenvio idempotente se a resposta se perder. A tabela `acesso_pedido` guarda apenas o hash, com validade de 90 dias. Consulta e cancelamento exigem esse token no header `x-order-access-token`; a loja pode revogá-lo pelo endpoint administrativo `POST /api/admin/pedidos/:id/revogar-acesso`. Para pedidos legados sem token, o UUID continua aceito por até 90 dias da criação.
+
+Execute `npm test` para rodar os testes unitários do formato/hash do token e da política de retry. Testes integrados com PostgreSQL e Mercado Pago sandbox continuam necessários antes de produção.
+
 ## Limitações conhecidas
 
 - **Taxa de entrega:** este projeto cobra só os produtos. O cliente paga o Uber Envios diretamente, da loja até a casa dele; o valor e o prazo são combinados pelo WhatsApp. Para cobrar tudo no Pix, defina taxa fixa por região em `src/pedidos.js`.

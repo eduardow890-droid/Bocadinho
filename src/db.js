@@ -68,6 +68,24 @@ async function init() {
     CREATE TABLE IF NOT EXISTS eventos_webhook (
       id BIGSERIAL PRIMARY KEY, request_id TEXT, tipo TEXT, referencia TEXT, criado_em BIGINT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS tentativas_cobranca (
+      pedido_id UUID PRIMARY KEY REFERENCES pedidos(id) ON DELETE CASCADE,
+      chave_idempotencia TEXT NOT NULL UNIQUE,
+      estado TEXT NOT NULL DEFAULT 'pendente',
+      tentativas INTEGER NOT NULL DEFAULT 0,
+      proxima_tentativa BIGINT NOT NULL DEFAULT 0,
+      lease_ate BIGINT,
+      ultimo_erro TEXT,
+      criado_em BIGINT NOT NULL,
+      atualizado_em BIGINT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS acesso_pedido (
+      pedido_id UUID PRIMARY KEY REFERENCES pedidos(id) ON DELETE CASCADE,
+      token_hash CHAR(64) NOT NULL UNIQUE,
+      expira_em BIGINT NOT NULL,
+      revogado_em BIGINT,
+      criado_em BIGINT NOT NULL
+    );
     ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS cidade TEXT NOT NULL DEFAULT '';
     ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS rua TEXT NOT NULL DEFAULT '';
     ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS numero TEXT NOT NULL DEFAULT '';
@@ -77,15 +95,24 @@ async function init() {
     ALTER TABLE produtos ADD COLUMN IF NOT EXISTS imagem_path TEXT;
     ALTER TABLE produtos ADD COLUMN IF NOT EXISTS esgotado BOOLEAN NOT NULL DEFAULT FALSE;
     CREATE INDEX IF NOT EXISTS idx_pedidos_status ON pedidos(status, expira_em);
+    CREATE INDEX IF NOT EXISTS idx_tentativas_cobranca_retry ON tentativas_cobranca(estado, proxima_tentativa, lease_ate);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_pagamentos_mp_order_id ON pagamentos(mp_order_id) WHERE mp_order_id IS NOT NULL;
     DELETE FROM eventos_webhook a USING eventos_webhook b
       WHERE a.request_id=b.request_id AND a.request_id IS NOT NULL AND a.id>b.id;
     CREATE UNIQUE INDEX IF NOT EXISTS idx_eventos_webhook_request_id ON eventos_webhook(request_id);
+    INSERT INTO tentativas_cobranca
+      (pedido_id,chave_idempotencia,estado,tentativas,proxima_tentativa,criado_em,atualizado_em)
+    SELECT p.id,p.id,'pendente',0,0,p.criado_em,p.criado_em
+      FROM pedidos p LEFT JOIN pagamentos pg ON pg.pedido_id=p.id
+      WHERE p.status='pendente' AND pg.pedido_id IS NULL
+    ON CONFLICT (pedido_id) DO NOTHING;
   `);
   for (const p of produtos) {
     await query(`INSERT INTO produtos (id,nome,descricao,preco_centavos,ativo) VALUES ($1,$2,$3,$4,TRUE)
       ON CONFLICT (id) DO NOTHING`, [p.id, p.nome, p.descricao, p.preco_centavos]);
   }
+  // Remove do catálogo o produto padrão descontinuado, sem alterar itens históricos dos pedidos.
+  await query("UPDATE produtos SET ativo=FALSE WHERE id='t1'");
 }
 
 async function close() { await pool.end(); }
