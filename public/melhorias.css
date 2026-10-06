@@ -78,3 +78,16 @@ html{scroll-padding-top:72px}
 .pix-etapas li.atual::before{background:#e2f49d;border-color:var(--wine);box-shadow:0 0 0 3px var(--pale),0 0 12px 5px rgba(226,244,157,1),0 0 28px 10px rgba(169,181,107,.95)}
 .pix-etapas li.atual::after{border-color:rgba(122,14,36,.72);background:rgba(226,244,157,.25);box-shadow:0 0 18px 7px rgba(196,215,126,.95);animation:pix-dot-pulse 1.25s ease-in-out infinite}
 @media(prefers-reduced-motion:reduce){.pix-etapas li.atual::after{animation:none;opacity:1;transform:translate(-50%,-50%) scale(1.2)}}
+
+/* Reforço de contraste: etapas concluídas com check; etapa atual pulsa no próprio círculo. */
+@keyframes pix-current-dot{
+	0%,100%{transform:translateX(-50%) scale(1);box-shadow:0 0 0 3px var(--pale),0 0 12px 5px rgba(226,244,157,1),0 0 28px 10px rgba(169,181,107,.95)}
+	50%{transform:translateX(-50%) scale(1.28);box-shadow:0 0 0 4px var(--pale),0 0 19px 9px rgba(226,244,157,1),0 0 38px 16px rgba(169,181,107,1)}
+}
+.pix-etapas li::before{width:18px;height:18px}
+.pix-etapas li::after{top:9px;width:34px;height:34px;background:rgba(196,215,126,.3);box-shadow:0 0 18px 8px rgba(169,181,107,.8)}
+.pix-etapas li.concluida::before{content:'✓';display:grid;place-items:center;color:#fff;font-size:12px;line-height:1;font-weight:900;background:#718b2e;border:2px solid #52651c;box-shadow:0 0 0 2px var(--pale),0 0 10px 4px rgba(169,181,107,1),0 0 24px 9px rgba(169,181,107,.85)}
+.pix-etapas li.concluida::after{top:9px;width:32px;height:32px;transform:translate(-50%,-50%) scale(1);opacity:.75;border-color:rgba(82,101,28,.6);background:rgba(169,181,107,.25);box-shadow:0 0 18px 8px rgba(169,181,107,.9)}
+.pix-etapas li.atual::before{z-index:3;width:18px;height:18px;background:#efffb6;border:2px solid #52651c;animation:pix-current-dot 1.15s ease-in-out infinite}
+.pix-etapas li.atual::after{z-index:2;top:9px;width:36px;height:36px;border:2px solid rgba(113,139,46,.85);background:rgba(196,215,126,.28);box-shadow:0 0 20px 9px rgba(169,181,107,.95);animation:pix-dot-pulse 1.15s ease-in-out infinite}
+@media(prefers-reduced-motion:reduce){.pix-etapas li.atual::before,.pix-etapas li.atual::after{animation:none;opacity:1;transform:translateX(-50%) scale(1.15);box-shadow:0 0 0 3px var(--pale),0 0 16px 8px rgba(169,181,107,1),0 0 30px 12px rgba(169,181,107,.9)}}
