@@ -95,11 +95,15 @@ GET /api/admin/resumo
 - Troque para as credenciais **de produção** e use HTTPS de verdade (Render, Railway, VPS + domínio).
 - Faça um Pix real de R$ 1 e confirme o ciclo completo (criar, pagar, webhook, status).
 - Faça backup do `bocadinho.db` e mantenha `NODE_ENV=production`.
-- Implemente o canal em `src/notificar.js` (e-mail, Telegram etc.) para ser avisado dos pagamentos.
+- Configure o canal opcional em `src/notificar.js` para ser avisado dos pagamentos.
 - Complete e revise a [política de privacidade](public/privacidade.html), incluindo identificação legal do controlador, tratamento de dados de alergias e prazos de retenção; defina também como emitir nota com seu contador.
 - Confirme na documentação do Mercado Pago as taxas, o prazo mínimo de expiração do Pix e os requisitos da conta.
 
 Consulte o [relatório de segurança e persistência](RELATORIO-SEGURANCA.md) antes do deploy.
+
+### Notificação gratuita no Telegram
+
+Crie um bot pelo `@BotFather`, envie `/start` para ele e configure `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` no servidor. A integração é opcional: sem essas variáveis, o fluxo permanece igual. Falhas no Telegram são apenas registradas e não interferem na confirmação do pagamento.
 
 ### Banco PostgreSQL no Supabase
 

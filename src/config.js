@@ -17,6 +17,8 @@ module.exports = {
   mpSegredo: exigir('MP_WEBHOOK_SECRET'),
   adminToken: exigir('ADMIN_TOKEN'),
   pagamentoSimulado: process.env.PAGAMENTO_SIMULADO === 'true' && process.env.NODE_ENV !== 'production',
+  telegramBotToken: process.env.TELEGRAM_BOT_TOKEN || '',
+  telegramChatId: process.env.TELEGRAM_CHAT_ID || '',
   // o Mercado Pago exige um prazo mínimo para o Pix; confira a documentação
   pixExpiraMin: Math.max(30, Number(process.env.PIX_EXPIRA_MIN || 30)),
   databaseUrl: process.env.DATABASE_URL || '',
