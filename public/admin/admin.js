@@ -15,10 +15,30 @@
   let somAtivo = false;
   let intervalo = null;
   let produtos = [];
+  let colunaMobileAtiva = 'novos';
+  const colunasRecolhidas = new Set(['finalizados']);
+  const detalhesAbertos = new Set();
+  let pedidosNovosNaoVistos = new Set();
+
+  const COLUNAS = [
+    { id: 'novos', titulo: 'Novos', statuses: ['pago'], icone: '🛍️', vazio: 'Aqui ficarão os novos pedidos pagos.', destaque: true },
+    { id: 'preparo', titulo: 'Em preparo', statuses: ['em_preparo'], icone: '🍪', vazio: 'Aqui ficarão os doces em preparo.' },
+    { id: 'rota', titulo: 'Pronto / A caminho', statuses: ['enviado'], icone: '🚚', vazio: 'Aqui ficarão os pedidos prontos para sair.' },
+    { id: 'finalizados', titulo: 'Finalizados', statuses: ['concluido'], icone: '✓', vazio: 'Aqui ficarão os pedidos entregues e finalizados.' },
+    { id: 'atencao', titulo: 'Atenção', statuses: ['pendente', 'revisar', 'estornado'], icone: '⚠️', vazio: 'Nenhum pedido precisa de atenção.' }
+  ];
 
   const dinheiro = centavos => (Number(centavos || 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const dataHora = ms => new Date(ms).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
   const textoStatus = status => STATUS_LABELS[status] || status;
+  const tempoDecorrido = ms => {
+    const minutos = Math.max(0, Math.floor((Date.now() - Number(ms || Date.now())) / 60000));
+    if (minutos < 1) return 'agora';
+    if (minutos < 60) return `há ${minutos} min`;
+    const horas = Math.floor(minutos / 60);
+    if (horas < 24) return `há ${horas} h`;
+    return `há ${Math.floor(horas / 24)} d`;
+  };
   const el = (tag, text, className) => {
     const node = document.createElement(tag);
     if (text !== undefined) node.textContent = text;
@@ -153,29 +173,68 @@
     return link;
   }
 
+  function tipoPedido(pedido) {
+    return pedido.tipo === 'entrega' ? { texto: 'Entrega', icone: '🚲', classe: 'delivery' } : { texto: 'Retirada', icone: '🛍️', classe: 'pickup' };
+  }
+
+  function capturaEstadoQuadro() {
+    document.querySelectorAll('.kanban-column').forEach(coluna => {
+      const id = coluna.dataset.column;
+      if (coluna.classList.contains('is-collapsed')) colunasRecolhidas.add(id);
+      else colunasRecolhidas.delete(id);
+    });
+    detalhesAbertos.clear();
+    document.querySelectorAll('.order-details[data-pedido-id]').forEach(details => { if (details.open) detalhesAbertos.add(details.dataset.pedidoId); });
+  }
+
   function criarCard(pedido) {
-    const card = el('article', undefined, `order-card${['revisar', 'estornado'].includes(pedido.status) ? ' urgent' : ''}`);
+    const tipo = tipoPedido(pedido);
+    const naoVisto = pedidosNovosNaoVistos.has(pedido.id);
+    const card = el('article', undefined, `order-card${['revisar', 'estornado', 'pendente'].includes(pedido.status) ? ' urgent' : ''}${naoVisto ? ' is-unseen' : ''}`);
+    card.dataset.pedidoId = pedido.id;
     const head = el('div', undefined, 'order-head');
     const titleBox = el('div');
     titleBox.append(el('h2', `Pedido #${pedido.id.slice(0, 8)}`, 'order-code'));
-    titleBox.append(el('p', `${pedido.nome} · ${dataHora(pedido.criado_em)} · ${pedido.tipo === 'entrega' ? 'Entrega' : 'Retirada'} · ${pedido.regiao}`, 'order-meta'));
+    titleBox.append(el('p', pedido.nome || 'Cliente não informado', 'order-customer'));
+    titleBox.append(el('p', `${dataHora(pedido.criado_em)} · ${tempoDecorrido(pedido.criado_em)}`, 'order-meta'));
     const badge = el('span', textoStatus(pedido.status), `badge ${pedido.status}`);
     head.append(titleBox, badge);
     card.append(head);
 
+    const selo = el('span', `${tipo.icone} ${tipo.texto}`, `order-type ${tipo.classe}`);
+    card.append(selo);
     const itens = el('ul', undefined, 'order-items');
-    (pedido.itens || []).forEach(item => {
+    (pedido.itens || []).slice(0, 2).forEach(item => {
       const linha = el('li');
       linha.append(el('span', `${item.qtd}x ${item.nome}`), el('strong', dinheiro(item.qtd * item.preco_unit_centavos)));
       itens.append(linha);
     });
-    card.append(itens, el('p', `Total: ${dinheiro(pedido.total_centavos)}`, 'order-total'));
+    const extras = (pedido.itens || []).slice(2);
+    if (extras.length) {
+      const mais = el('div', undefined, 'extra-items');
+      mais.hidden = true;
+      extras.forEach(item => {
+        const linha = el('div', undefined, 'extra-item');
+        linha.append(el('span', `${item.qtd}x ${item.nome}`), el('strong', dinheiro(item.qtd * item.preco_unit_centavos)));
+        mais.append(linha);
+      });
+      const verMais = el('button', `Ver mais ${extras.length} item${extras.length > 1 ? 's' : ''}`, 'items-more-toggle');
+      verMais.type = 'button';
+      verMais.addEventListener('click', () => {
+        mais.hidden = !mais.hidden;
+        verMais.textContent = mais.hidden ? `Ver mais ${extras.length} item${extras.length > 1 ? 's' : ''}` : 'Ver menos';
+      });
+      card.append(itens, mais, verMais);
+    } else card.append(itens);
+    card.append(el('p', `Total: ${dinheiro(pedido.total_centavos)}`, 'order-total'));
 
     if (pedido.obs) card.append(el('p', `Observação: ${pedido.obs}`, 'order-note'));
     if (pedido.status === 'revisar') card.append(el('p', 'Atenção: pagamento fora das condições esperadas ou recebido após expiração. Não avance sem conferência manual.', 'warning'));
     if (pedido.status === 'estornado') card.append(el('p', 'Atenção: este pagamento foi estornado. Não avance o pedido.', 'warning'));
 
     const details = el('details', undefined, 'order-details');
+    details.dataset.pedidoId = pedido.id;
+    details.open = detalhesAbertos.has(pedido.id);
     details.append(el('summary', 'Ver endereço e contato'));
     const grid = el('div', undefined, 'details-grid');
     grid.append(el('div', undefined));
@@ -193,7 +252,7 @@
     const actions = el('div', undefined, 'order-actions');
     const whatsapp = criarWhatsapp(pedido);
     if (whatsapp) actions.append(whatsapp);
-    const revogar = el('button', 'Revogar acesso do cliente', 'button secondary');
+    const revogar = el('button', 'Revogar acesso', 'button secondary');
     revogar.type = 'button';
     revogar.addEventListener('click', () => revogarAcesso(pedido.id, revogar));
     actions.append(revogar);
@@ -209,20 +268,87 @@
     return card;
   }
 
-  function renderPedidos() {
-    const lista = $('orders');
-    lista.replaceChildren();
+  function dataDoPedido(pedido) {
+    const data = new Date(Number(pedido.criado_em));
+    return new Date(data.getFullYear(), data.getMonth(), data.getDate()).getTime();
+  }
+
+  function passaFiltros(pedido) {
     const busca = $('search').value.trim().toLocaleLowerCase('pt-BR');
-    const filtrados = pedidos.filter(pedido => {
-      const nome = String(pedido.nome || '').toLocaleLowerCase('pt-BR');
-      const telefone = String(pedido.telefone || '').toLocaleLowerCase('pt-BR');
-      return !busca || nome.includes(busca) || telefone.includes(busca);
-    });
-    if (!filtrados.length) {
-      lista.append(el('p', 'Nenhum pedido encontrado para este filtro.', 'empty'));
-      return;
+    const tipo = $('type-filter').value;
+    const periodo = $('period-filter').value;
+    const status = $('status-filter').value;
+    const textoBusca = [pedido.nome, pedido.telefone, pedido.id, pedido.id?.slice(0, 8)].join(' ').toLocaleLowerCase('pt-BR');
+    if (busca && !textoBusca.includes(busca)) return false;
+    if (tipo && pedido.tipo !== tipo) return false;
+    if (status && pedido.status !== status) return false;
+    if (periodo) {
+      const hoje = new Date();
+      const hojeInicio = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()).getTime();
+      const dia = dataDoPedido(pedido);
+      if (periodo === 'hoje' && dia !== hojeInicio) return false;
+      if (periodo === 'ontem' && dia !== hojeInicio - 86400000) return false;
+      if (periodo === '7dias' && (dia < hojeInicio - 6 * 86400000 || dia > hojeInicio)) return false;
     }
-    filtrados.forEach(pedido => lista.append(criarCard(pedido)));
+    return true;
+  }
+
+  function criarColuna(coluna, pedidosDaColuna) {
+    const section = el('section', undefined, `kanban-column${coluna.destaque ? ' is-highlighted' : ''}${colunasRecolhidas.has(coluna.id) ? ' is-collapsed' : ''}`);
+    section.dataset.column = coluna.id;
+    const header = el('header', undefined, 'kanban-column-header');
+    const titulo = el('div', undefined, 'kanban-column-title');
+    titulo.append(el('span', coluna.icone, 'kanban-icon'), el('h2', coluna.titulo));
+    const contador = el('span', String(pedidosDaColuna.length), 'column-count');
+    titulo.append(contador);
+    const toggle = el('button', section.classList.contains('is-collapsed') ? '▸' : '▾', 'kanban-column-toggle');
+    toggle.type = 'button';
+    toggle.setAttribute('aria-expanded', String(!section.classList.contains('is-collapsed')));
+    toggle.setAttribute('aria-label', `Recolher coluna ${coluna.titulo}`);
+    toggle.addEventListener('click', () => {
+      const recolhida = section.classList.toggle('is-collapsed');
+      colunasRecolhidas[recolhida ? 'add' : 'delete'](coluna.id);
+      toggle.textContent = recolhida ? '▸' : '▾';
+      toggle.setAttribute('aria-expanded', String(!recolhida));
+    });
+    header.append(titulo, toggle);
+    section.append(header);
+    const body = el('div', undefined, 'kanban-column-body');
+    if (!pedidosDaColuna.length) {
+      const vazio = el('div', undefined, 'kanban-empty');
+      vazio.append(el('span', coluna.icone, 'kanban-empty-icon'), el('p', coluna.vazio));
+      body.append(vazio);
+    } else pedidosDaColuna.forEach(pedido => body.append(criarCard(pedido)));
+    section.append(body);
+    return section;
+  }
+
+  function renderAbas(colunas) {
+    const tabs = $('kanban-tabs');
+    tabs.replaceChildren();
+    colunas.forEach(coluna => {
+      const botao = el('button', undefined, `kanban-tab${coluna.id === colunaMobileAtiva ? ' is-active' : ''}`);
+      botao.type = 'button';
+      botao.dataset.column = coluna.id;
+      botao.setAttribute('aria-selected', String(coluna.id === colunaMobileAtiva));
+      botao.append(el('span', coluna.titulo), el('strong', String(coluna.pedidos.length)));
+      botao.addEventListener('click', () => {
+        colunaMobileAtiva = coluna.id;
+        renderPedidos();
+      });
+      tabs.append(botao);
+    });
+  }
+
+  function renderPedidos() {
+    capturaEstadoQuadro();
+    const lista = $('orders');
+    lista.dataset.activeColumn = colunaMobileAtiva;
+    lista.replaceChildren();
+    const colunas = COLUNAS.map(coluna => ({ ...coluna, pedidos: pedidos.filter(pedido => coluna.statuses.includes(pedido.status) && passaFiltros(pedido)) }));
+    renderAbas(colunas);
+    colunas.forEach(coluna => lista.append(criarColuna(coluna, coluna.pedidos)));
+    pedidosNovosNaoVistos.clear();
   }
 
   async function carregar() {
@@ -230,11 +356,9 @@
     const lista = $('orders');
     lista.setAttribute('aria-busy', 'true');
     try {
-      const status = $('status-filter').value;
-      const query = status ? `?status=${encodeURIComponent(status)}` : '';
       const [resumo, novaLista] = await Promise.all([
         requisicao('/api/admin/resumo'),
-        requisicao(`/api/admin/pedidos${query}`)
+        requisicao('/api/admin/pedidos')
       ]);
       const novosPagos = novaLista.filter(p => p.status === 'pago' && !pedidosPagosConhecidos.has(p.id));
       if (!primeiraCarga && novosPagos.length) {
@@ -242,6 +366,7 @@
         $('notice').hidden = false;
         if (somAtivo) tocarAviso();
       }
+      if (!primeiraCarga) novosPagos.forEach(pedido => pedidosNovosNaoVistos.add(pedido.id));
       pedidosPagosConhecidos = new Set(novaLista.filter(p => PAID_STATUSES.has(p.status)).map(p => p.id));
       pedidos = novaLista;
       atualizarResumo(resumo);
@@ -257,7 +382,10 @@
   }
 
   async function mudarStatus(id, status, botao) {
-    if (!window.confirm(`Confirmar mudança para “${textoStatus(status)}”?`)) return;
+    const pergunta = status === 'concluido'
+      ? 'Finalizar este pedido? Esta ação confirma que ele foi entregue ou retirado.'
+      : `Confirmar mudança para “${textoStatus(status)}”?`;
+    if (!window.confirm(pergunta)) return;
     botao.disabled = true;
     try {
       await requisicao(`/api/admin/pedidos/${encodeURIComponent(id)}/status`, {
@@ -330,7 +458,9 @@
   });
   $('logout-button').addEventListener('click', sair);
   $('refresh-button').addEventListener('click', carregar);
-  $('status-filter').addEventListener('change', carregar);
+  $('status-filter').addEventListener('change', renderPedidos);
+  $('type-filter').addEventListener('change', renderPedidos);
+  $('period-filter').addEventListener('change', renderPedidos);
   $('search').addEventListener('input', renderPedidos);
   $('sound-button').addEventListener('click', () => {
     somAtivo = !somAtivo;

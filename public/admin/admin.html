@@ -77,27 +77,43 @@
         <div id="product-list" class="product-list" aria-live="polite"></div>
       </section>
 
-      <section class="toolbar" aria-label="Filtros de pedidos">
+      <section class="toolbar orders-toolbar" aria-label="Filtros de pedidos">
         <label class="filter-label" for="status-filter">Status
           <select id="status-filter">
-            <option value="pago">Pagos</option>
+            <option value="">Todos</option>
+            <option value="pago">Novos / pagos</option>
             <option value="em_preparo">Em preparo</option>
-            <option value="enviado">Enviados</option>
+            <option value="enviado">Prontos / a caminho</option>
             <option value="pendente">Pendentes</option>
             <option value="revisar">Revisar</option>
             <option value="estornado">Estornados</option>
             <option value="concluido">Concluídos</option>
-            <option value="">Todos</option>
           </select>
         </label>
-        <label class="search-label" for="search">Buscar por nome ou telefone
-          <input id="search" type="search" autocomplete="off" placeholder="Digite para filtrar">
+        <label class="filter-label" for="type-filter">Pedido
+          <select id="type-filter">
+            <option value="">Retirada e entrega</option>
+            <option value="retirada">Somente retirada</option>
+            <option value="entrega">Somente entrega</option>
+          </select>
+        </label>
+        <label class="filter-label" for="period-filter">Período
+          <select id="period-filter">
+            <option value="">Qualquer data</option>
+            <option value="hoje">Hoje</option>
+            <option value="ontem">Ontem</option>
+            <option value="7dias">Últimos 7 dias</option>
+          </select>
+        </label>
+        <label class="search-label" for="search">Buscar pedido
+          <input id="search" type="search" autocomplete="off" placeholder="Nome, telefone ou nº do pedido">
         </label>
         <button id="refresh-button" class="button secondary" type="button">Atualizar</button>
       </section>
 
       <p id="connection-message" class="message" role="status" aria-live="polite" hidden></p>
-      <section id="orders" class="orders" aria-live="polite" aria-busy="false"></section>
+      <nav id="kanban-tabs" class="kanban-tabs" aria-label="Colunas de pedidos"></nav>
+      <section id="orders" class="orders-board" aria-live="polite" aria-busy="false"></section>
       </div>
 
       <div id="view-clientes" role="tabpanel" aria-labelledby="tab-clientes" hidden>
