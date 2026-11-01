@@ -40,6 +40,13 @@ async function criarCliente({ nome, email, telefone, senha }) {
   return { id, nome, email, telefone };
 }
 
+async function obterPorId(id) {
+  if (!id) return null;
+  return (await db.query(
+    'SELECT id,nome,email,telefone,criado_em FROM clientes WHERE id=$1', [id]
+  )).rows[0] || null;
+}
+
 async function autenticar(email, senha) {
   const c = (await db.query('SELECT * FROM clientes WHERE email=$1', [email])).rows[0];
   if (!c) { await conferirSenha(senha, await hashFalso); return null; }
@@ -93,4 +100,4 @@ async function limparSessoesExpiradas() {
   await db.query('DELETE FROM sessoes_cliente WHERE expira_em<$1', [Date.now()]);
 }
 
-module.exports = { criarCliente, autenticar, abrirSessao, carregarCliente, exigirCliente, encerrarSessao, limparSessoesExpiradas, publico, hashSenha, conferirSenha };
+module.exports = { criarCliente, obterPorId, autenticar, abrirSessao, carregarCliente, exigirCliente, encerrarSessao, limparSessoesExpiradas, publico, hashSenha, conferirSenha };

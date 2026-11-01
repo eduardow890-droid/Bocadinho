@@ -38,9 +38,27 @@ async function chamar(metodo, caminho, corpo, chaveIdempotencia, cabecalhos = {}
 function itensDaOrder(itens = []) {
   return itens.map(item => ({
     title: item.nome,
+    category_id: 'food',
     quantity: Number(item.qtd),
     unit_price: (Number(item.preco_unit_centavos) / 100).toFixed(2)
   }));
+}
+
+function dadosDoPagador(cliente, identificacao) {
+  const partes = String(cliente.nome || '').trim().split(/\s+/).filter(Boolean);
+  const primeiro = partes.shift() || 'Cliente';
+  const pagador = {
+    email: cliente.email,
+    first_name: primeiro,
+    ...(partes.length ? { last_name: partes.join(' ') } : {}),
+    ...(identificacao ? { identification: identificacao } : {})
+  };
+  return {
+    pagador,
+    informacoesAdicionais: cliente.criadoEm ? {
+      'payer.registration_date': new Date(Number(cliente.criadoEm)).toISOString()
+    } : undefined
+  };
 }
 
 /** Cria uma order Pix pelo fluxo de sandbox da Orders API. */
@@ -48,6 +66,7 @@ async function criarPix({ pedido, cliente, itens, deviceId, chaveIdempotencia = 
   // No sandbox do Pix, APRO é o valor oficial que faz a order ser aprovada
   // automaticamente. Em produção, usamos os dados reais do comprador.
   const teste = !cfg.producao;
+  const dadosPagador = dadosDoPagador(cliente);
   const pagamento = {
     amount: (pedido.total_centavos / 100).toFixed(2),
     payment_method: { id: 'pix', type: 'bank_transfer' }
@@ -60,10 +79,8 @@ async function criarPix({ pedido, cliente, itens, deviceId, chaveIdempotencia = 
     total_amount: (pedido.total_centavos / 100).toFixed(2),
     external_reference: pedido.id,
     config: { statement_descriptor: cfg.mpStatementDescriptor },
-    payer: {
-      email: teste ? 'test_user_br@testuser.com' : cliente.email,
-      first_name: teste ? 'APRO' : cliente.nome.split(' ')[0]
-    },
+    payer: teste ? { ...dadosPagador.pagador, email: 'test_user_br@testuser.com', first_name: 'APRO' } : dadosPagador.pagador,
+    ...(dadosPagador.informacoesAdicionais ? { additional_info: dadosPagador.informacoesAdicionais } : {}),
     items: itensDaOrder(itens),
     transactions: { payments: [pagamento] },
   }, chaveIdempotencia, deviceId ? { 'X-meli-session-id': deviceId } : {}); // chave persistida antes da chamada; toda repetição recupera a mesma cobrança
@@ -92,16 +109,15 @@ async function criarPix({ pedido, cliente, itens, deviceId, chaveIdempotencia = 
 async function criarCartao({ pedido, cliente, itens, dados, deviceId, chaveIdempotencia }) {
   const tipo = dados.payment_type_id === 'debit_card' ? 'debit_card' : 'credit_card';
   const amount = (pedido.total_centavos / 100).toFixed(2);
+  const dadosPagador = dadosDoPagador(cliente, dados.payer?.identification);
   return chamar('POST', '/v1/orders', {
     type: 'online',
     processing_mode: 'automatic',
     total_amount: amount,
     external_reference: pedido.id,
     config: { statement_descriptor: cfg.mpStatementDescriptor },
-    payer: {
-      email: cliente.email,
-      identification: dados.payer?.identification
-    },
+    payer: dadosPagador.pagador,
+    ...(dadosPagador.informacoesAdicionais ? { additional_info: dadosPagador.informacoesAdicionais } : {}),
     items: itensDaOrder(itens),
     transactions: {
       payments: [{

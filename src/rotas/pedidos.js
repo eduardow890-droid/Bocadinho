@@ -94,7 +94,11 @@ router.post('/pedidos/:id/cartao', limiteCartao, async (req, res, next) => {
     }
     const order = await mp.criarCartao({
       pedido,
-      cliente: { email: pedido.email, nome: pedido.nome },
+      cliente: {
+        email: pedido.email,
+        nome: pedido.nome,
+        criadoEm: (await clientes.obterPorId(pedido.cliente_id))?.criado_em
+      },
       itens: await svc.obterItens(pedido.id),
       dados,
       deviceId,

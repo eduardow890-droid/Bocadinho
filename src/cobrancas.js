@@ -2,6 +2,7 @@ const db = require('./db');
 const cfg = require('./config');
 const mp = require('./mercadopago');
 const svc = require('./pedidos');
+const clientes = require('./clientes');
 const { atrasoRetryMs } = require('./politica-retry');
 
 const DURACAO_LEASE_MS = 60 * 1000;
@@ -82,7 +83,11 @@ async function gerarParaPedido(pedidoId, deviceId = '') {
           }
         : await mp.criarPix({
             pedido,
-            cliente: { email: pedido.email, nome: pedido.nome },
+            cliente: {
+              email: pedido.email,
+              nome: pedido.nome,
+              criadoEm: (await clientes.obterPorId(pedido.cliente_id))?.criado_em
+            },
             itens: await svc.obterItens(pedido.id),
             deviceId,
             chaveIdempotencia: tentativa.chave_idempotencia
