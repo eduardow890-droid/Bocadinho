@@ -23,8 +23,9 @@ app.use(helmet({
       // O MercadoPago.js injeta um pequeno bootstrap inline e usa o endpoint
       // de telemetria do Mercado Libre durante a inicialização do Brick.
       'script-src': ["'self'", "'unsafe-inline'", 'https://sdk.mercadopago.com', 'https://http2.mlstatic.com', 'https://www.mercadopago.com'],
-      'frame-src': ["'self'", 'https://*.mercadopago.com.br', 'https://*.mercadolibre.com'],
-      'connect-src': ["'self'", 'https://api.mercadopago.com', 'https://api.mercadolibre.com', 'https://www.mercadolibre.com', 'https://www.mercadolivre.com', 'https://http2.mlstatic.com', 'https://www.mercadopago.com'],
+      'frame-src': ["'self'", 'https://*.mercadopago.com', 'https://*.mercadopago.com.br', 'https://*.mercadolibre.com'],
+      // O Card Payment Brick usa estes hosts para Secure Fields e tokenização.
+      'connect-src': ["'self'", 'https://api.mercadopago.com', 'https://api-static.mercadopago.com', 'https://secure-fields.mercadopago.com', 'https://api.mercadolibre.com', 'https://www.mercadolibre.com', 'https://www.mercadolivre.com', 'https://http2.mlstatic.com', 'https://www.mercadopago.com'],
       // em desenvolvimento (http://localhost) não forçamos https
       'upgrade-insecure-requests': cfg.producao ? [] : null
     }
