@@ -368,14 +368,17 @@ async function inicializarCartao(d,tokenAcesso){
 	const mp=new MercadoPago(mpPublicKey,{locale:'pt-BR'});
 	const bricks=mp.bricks();
 	cardBrick=await bricks.create('cardPayment','cardPaymentBrick_container',{
-		initialization:{amount:d.total_centavos/100},
+		initialization:{amount:d.total_centavos/100,payer:{email:$('email').value.trim()}},
 		callbacks:{
 			onReady:()=>{},
-			onSubmit:async(formData,additionalData)=>{
+				onSubmit:async(formData,additionalData)=>{
+					// Algumas versões do Brick não devolvem payer.email quando ele
+					// não foi informado na inicialização; o backend usa o e-mail do pedido.
+					const payer={...(formData.payer||{}),email:$('email').value.trim()};
 					const deviceId=window.MP_DEVICE_SESSION_ID||'';
 				const r=await fetch('/api/pedidos/'+encodeURIComponent(d.id)+'/cartao',{
 						method:'POST',headers:{'Content-Type':'application/json','x-order-access-token':tokenAcesso,...(deviceId?{'x-meli-session-id':deviceId}:{})},
-					body:JSON.stringify({...formData,payment_type_id:additionalData?.paymentTypeId||'credit_card'})
+					body:JSON.stringify({...formData,payer,payment_type_id:additionalData?.paymentTypeId||'credit_card'})
 				});
 				const resposta=await r.json().catch(()=>({}));
 				if(!r.ok)throw new Error(resposta.erro||'Não foi possível processar o cartão.');

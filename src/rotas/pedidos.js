@@ -78,8 +78,11 @@ router.post('/pedidos/:id/cartao', limiteCartao, async (req, res, next) => {
 
     const dados = req.body || {};
     const deviceId = req.get('x-meli-session-id') || '';
-    if (!/^[a-z0-9_-]{1,40}$/i.test(String(dados.payment_method_id || '')) ||
-        !/^[a-z0-9_-]{20,200}$/i.test(String(dados.token || '')) ||
+    // O token é opaco e o formato/tamanho pode mudar entre versões do Brick.
+    // Validamos apenas que é um valor textual não vazio; o número do cartão
+    // nunca chega a esta rota.
+    if (!/^[a-z0-9_.-]{1,64}$/i.test(String(dados.payment_method_id || '')) ||
+        !/^\S{1,500}$/.test(String(dados.token || '')) ||
         !Number.isInteger(Number(dados.installments)) || Number(dados.installments) < 1 || Number(dados.installments) > 24) {
       return res.status(400).json({ erro: 'Dados do cartão inválidos. Tente novamente.' });
     }
