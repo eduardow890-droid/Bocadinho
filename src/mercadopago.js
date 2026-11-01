@@ -144,10 +144,11 @@ function assinaturaValida(req) {
   });
   if (!partes.ts || !partes.v1) return false;
 
-  // O Mercado Pago envia ts como Unix epoch em segundos. Rejeita assinaturas
-  // antigas ou com relógio muito fora de sincronia para reduzir replay.
+  // O Mercado Pago documenta ts em milissegundos (ex.: 1742505638683).
+  // Aceitamos segundos também para manter compatibilidade com entregas antigas.
   if (!/^\d+$/.test(partes.ts)) return false;
-  const timestampMs = Number(partes.ts) * 1000;
+  const timestamp = Number(partes.ts);
+  const timestampMs = timestamp >= 1e12 ? timestamp : timestamp * 1000;
   if (!Number.isSafeInteger(timestampMs) || Math.abs(Date.now() - timestampMs) > 5 * 60 * 1000) return false;
 
   let dataId = req.query['data.id'] ?? req.body?.data?.id;
