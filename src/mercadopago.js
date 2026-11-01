@@ -59,6 +59,7 @@ async function criarPix({ pedido, cliente, itens, deviceId, chaveIdempotencia = 
     processing_mode: 'automatic',
     total_amount: (pedido.total_centavos / 100).toFixed(2),
     external_reference: pedido.id,
+    config: { statement_descriptor: cfg.mpStatementDescriptor },
     payer: {
       email: teste ? 'test_user_br@testuser.com' : cliente.email,
       first_name: teste ? 'APRO' : cliente.nome.split(' ')[0]
@@ -96,6 +97,7 @@ async function criarCartao({ pedido, cliente, itens, dados, deviceId, chaveIdemp
     processing_mode: 'automatic',
     total_amount: amount,
     external_reference: pedido.id,
+    config: { statement_descriptor: cfg.mpStatementDescriptor },
     payer: {
       email: cliente.email,
       identification: dados.payer?.identification
