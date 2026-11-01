@@ -108,8 +108,7 @@ async function criarCartao({ pedido, cliente, itens, dados, deviceId, chaveIdemp
           id: dados.payment_method_id,
           type: tipo,
           token: dados.token,
-          installments: Number(dados.installments) || 1,
-          statement_descriptor: cfg.mpStatementDescriptor
+          installments: Number(dados.installments) || 1
         }
       }]
     }

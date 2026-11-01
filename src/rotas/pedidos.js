@@ -76,7 +76,13 @@ router.post('/pedidos/:id/cartao', limiteCartao, async (req, res, next) => {
     if (pedido.status !== 'pendente') return res.status(409).json({ erro: 'Este pedido não está aguardando pagamento.' });
     if (Number(pedido.expira_em) <= Date.now()) return res.status(409).json({ erro: 'Este pedido expirou. Faça um novo pedido.' });
 
-    const dados = req.body || {};
+    // O e-mail confiável é o que foi confirmado na criação do pedido. O Brick
+    // possui um campo próprio de e-mail e pode devolvê-lo com outra formatação
+    // ou valor; nunca devemos rejeitar o pagamento por essa duplicação de UI.
+    const dados = {
+      ...(req.body || {}),
+      payer: { ...((req.body || {}).payer || {}), email: pedido.email }
+    };
     const deviceId = req.get('x-meli-session-id') || '';
     // O token é opaco e o formato/tamanho pode mudar entre versões do Brick.
     // Validamos apenas que é um valor textual não vazio; o número do cartão
@@ -86,10 +92,6 @@ router.post('/pedidos/:id/cartao', limiteCartao, async (req, res, next) => {
         !Number.isInteger(Number(dados.installments)) || Number(dados.installments) < 1 || Number(dados.installments) > 24) {
       return res.status(400).json({ erro: 'Dados do cartão inválidos. Tente novamente.' });
     }
-    if (!dados.payer?.email || String(dados.payer.email).toLowerCase() !== String(pedido.email).toLowerCase()) {
-      return res.status(400).json({ erro: 'O e-mail do pagador não confere com o pedido.' });
-    }
-
     const order = await mp.criarCartao({
       pedido,
       cliente: { email: pedido.email, nome: pedido.nome },
