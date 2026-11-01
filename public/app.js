@@ -12,6 +12,8 @@ const CHAVE_CARRINHO='bocadinho_carrinho',CHAVE_RASCUNHO='bocadinho_rascunho';
 const CAMPOS_RASCUNHO=['nome','telefone','email','rua','numero','complemento','regiao','cidade','obs'];
 const PRAZO_RASCUNHO_MS=7*24*60*60*1000;
 let totalExibido=0,frameTotal=0,pedidoAtual=null,timerPoll=0,timerRelogio=0,cardBrick=null,mpPublicKey='';
+let emailCartaoAtual='';
+let retryingCard=false;
 let checkoutEtapa=1;
 
 function tokenAleatorio(){
@@ -368,12 +370,15 @@ async function inicializarCartao(d,tokenAcesso){
 	if(!window.MercadoPago)throw new Error('SDK do Mercado Pago não carregou.');
 	if(!mpPublicKey)throw new Error('A chave pública do Mercado Pago não está configurada.');
 	if(cardBrick?.unmount)await cardBrick.unmount();
+	$('cardPaymentBrick_container').replaceChildren();
 	const mp=new MercadoPago(mpPublicKey,{locale:'pt-BR'});
 	const bricks=mp.bricks();
 	cardBrick=await bricks.create('cardPayment','cardPaymentBrick_container',{
-		initialization:{amount:d.total_centavos/100,payer:{email:$('email').value.trim()}},
+		initialization:{amount:d.total_centavos/100,payer:{email:$('email').value.trim()||emailCartaoAtual}},
 		callbacks:{
-			onReady:()=>{},
+			onReady:()=>{
+				$('cartao-tentar-novamente').hidden=true;
+			},
 				onSubmit:async(formData,additionalData)=>{
 					// Algumas versões do Brick não devolvem payer.email quando ele
 					// não foi informado na inicialização; o backend usa o e-mail do pedido.
@@ -385,32 +390,42 @@ async function inicializarCartao(d,tokenAcesso){
 				});
 				const resposta=await r.json().catch(()=>({}));
 				if(!r.ok)throw new Error(resposta.erro||'Não foi possível processar o cartão.');
+				retryingCard=false;
 				mostrarStatusPagamento(resposta,tokenAcesso);
 			},
 			onError:erro=>{
 				console.error('[cartao-brick]',erro);
-				$('cartao-erro').textContent='Não foi possível carregar o formulário de cartão. Confirme as credenciais públicas do Mercado Pago e tente novamente.';
+				retryingCard=false;
+				$('cartao-erro').textContent='Não foi possível carregar ou continuar o formulário de cartão. Tente recarregá-lo ou fale com a loja pelo WhatsApp.';
+				$('cartao-tentar-novamente').textContent='Recarregar formulário';
+				$('cartao-tentar-novamente').hidden=false;
+				$('cartao-tentar-novamente').disabled=false;
 			}
 		}
 	});
 }
 
 function mostrarCartao(d,tokenAcesso){
-	pedidoAtual={id:d.id,token:tokenAcesso||lerPedidoSalvo()?.token,fim:Date.now()+d.restante_ms};
+	pedidoAtual={id:d.id,token:tokenAcesso||lerPedidoSalvo()?.token,fim:Date.now()+d.restante_ms,total_centavos:d.total_centavos};
+	emailCartaoAtual=$('email').value.trim();
 	$('dados').hidden=true;$('cart-summary').hidden=true;$('checkout-progress').hidden=true;
 	$('pix').hidden=true;$('cartao-pagamento').hidden=false;
 	$('cartao-erro').textContent='';
+	$('cartao-tentar-novamente').hidden=true;
 	$('pix-status').textContent='Aguardando pagamento';
 	$('pix-status-detail').textContent='Preencha os dados do cartão abaixo.';
 	inicializarCartao(d,tokenAcesso).catch(e=>{
 		console.error('[cartao-brick]',e);
 		$('cartao-erro').textContent='Não foi possível carregar o formulário de cartão. Confirme as credenciais públicas do Mercado Pago e tente novamente.';
+		$('cartao-tentar-novamente').textContent='Recarregar formulário';
+		$('cartao-tentar-novamente').hidden=false;
 	});
 	$('cartao-pagamento').scrollIntoView({behavior:reduzirMovimento?'auto':'smooth',block:'center'});
 }
 
 function mostrarStatusPagamento(d,tokenAcesso){
-	pedidoAtual={id:d.id,token:tokenAcesso||lerPedidoSalvo()?.token,fim:Date.now()+d.restante_ms};
+	pedidoAtual={id:d.id,token:tokenAcesso||lerPedidoSalvo()?.token,fim:Date.now()+d.restante_ms,total_centavos:d.total_centavos};
+	$('cartao-tentar-novamente').hidden=true;
 	if(d.status==='pendente'&&METODOS_CARTAO.has(d.metodo_pagamento)&&STATUS_PAGAMENTO_RECUSADO.has(d.status_pagamento)){
 		exibirRecusaCartao();
 		iniciarPolling();
@@ -428,7 +443,32 @@ function exibirRecusaCartao(){
 	$('checkout-progress').hidden=true;
 	$('pix').hidden=true;
 	$('cartao-pagamento').hidden=false;
-	$('cartao-erro').textContent='O Mercado Pago não aprovou esta tentativa. Confira os dados ou tente outro cartão. O pedido ainda não foi confirmado. Se o problema continuar, fale com a loja pelo WhatsApp.';
+	if(!retryingCard){
+		$('cartao-erro').textContent='O Mercado Pago não aprovou esta tentativa. Confira os dados ou tente outro cartão. O pedido ainda não foi confirmado. Se o problema continuar, fale com a loja pelo WhatsApp.';
+		$('cartao-tentar-novamente').textContent='Tentar outro cartão';
+		$('cartao-tentar-novamente').hidden=false;
+		$('cartao-tentar-novamente').disabled=false;
+	}
+}
+
+async function tentarNovamenteCartao(){
+	if(!pedidoAtual||!pedidoAtual.total_centavos)return;
+	const botao=$('cartao-tentar-novamente');
+	botao.disabled=true;
+	botao.hidden=true;
+	retryingCard=true;
+	$('cartao-erro').textContent='';
+	try{
+		await inicializarCartao(pedidoAtual,pedidoAtual.token);
+		$('cartao-pagamento').scrollIntoView({behavior:reduzirMovimento?'auto':'smooth',block:'center'});
+	}catch(e){
+		retryingCard=false;
+		console.error('[cartao-brick]',e);
+		$('cartao-erro').textContent='Não foi possível recarregar o formulário de cartão. Tente novamente ou fale com a loja pelo WhatsApp.';
+		botao.textContent='Recarregar formulário';
+		botao.hidden=false;
+		botao.disabled=false;
+	}
 }
 
 /* ---------- painel do Pix ---------- */
@@ -454,7 +494,7 @@ function exibirDadosPix(d){
 }
 
 function mostrarPix(d,tokenAcesso){
-	pedidoAtual={id:d.id,token:tokenAcesso||lerPedidoSalvo()?.token,fim:Date.now()+d.restante_ms};
+	pedidoAtual={id:d.id,token:tokenAcesso||lerPedidoSalvo()?.token,fim:Date.now()+d.restante_ms,total_centavos:d.total_centavos};
 	if(d.status==='pendente'&&METODOS_CARTAO.has(d.metodo_pagamento)&&STATUS_PAGAMENTO_RECUSADO.has(d.status_pagamento)){
 		exibirRecusaCartao();
 		iniciarPolling();
@@ -530,6 +570,7 @@ async function consultarStatus(){
 			if(METODOS_CARTAO.has(d.metodo_pagamento)&&STATUS_PAGAMENTO_RECUSADO.has(d.status_pagamento)){
 				exibirRecusaCartao();
 			}else if(METODOS_CARTAO.has(d.metodo_pagamento)){
+				$('cartao-tentar-novamente').hidden=true;
 				$('pix').hidden=false;
 				$('cartao-pagamento').hidden=true;
 				$('pix-titulo').textContent='Acompanhe seu pedido';
@@ -538,6 +579,7 @@ async function consultarStatus(){
 				$('pix-status-detail').textContent='O Mercado Pago ainda não confirmou este pagamento. O pedido só será confirmado após a aprovação; não faça outra cobrança. Esta tela será atualizada automaticamente.';
 				$('pix-corpo').hidden=true;
 			}else if(d.pix){
+				$('cartao-tentar-novamente').hidden=true;
 				$('pix').hidden=false;
 				$('cartao-pagamento').hidden=true;
 				$('pix-titulo').textContent='Pague com Pix';
@@ -545,8 +587,10 @@ async function consultarStatus(){
 				$('pix-status').textContent='Aguardando pagamento';
 				$('pix-status-detail').textContent='Escaneie o QR Code ou use o Pix copia e cola.';
 			}else{
+				$('cartao-tentar-novamente').hidden=true;
 				$('pix').hidden=false;
 				$('cartao-pagamento').hidden=true;
+				$('cartao-tentar-novamente').hidden=true;
 				$('pix-status').textContent='Preparando seu Pix';
 				$('pix-status-detail').textContent='Estamos finalizando a cobrança. Esta tela será atualizada automaticamente; não faça outro pedido.';
 			}
@@ -609,6 +653,7 @@ $('pix-copiar').addEventListener('click',async()=>{
 	setTimeout(()=>{btn.textContent='Copiar código Pix'},2000);
 });
 
+$('cartao-tentar-novamente').addEventListener('click',tentarNovamenteCartao);
 $('pix-cancelar').addEventListener('click',cancelarPedido);
 
 $('pix-novo').addEventListener('click',()=>{

@@ -122,7 +122,7 @@ footer a{color:var(--pale)}
 
 button.btn{border:0;width:100%;cursor:pointer}
 button.btn:disabled{opacity:.6;cursor:wait}
-#dados[hidden],.pix[hidden],.pix [hidden],#pix-corpo[hidden],#pix-novo[hidden],#pix-cancelar[hidden]{display:none!important}
+#dados[hidden],.pix[hidden],.pix [hidden],#pix-corpo[hidden],#pix-novo[hidden],#pix-cancelar[hidden],#cartao-tentar-novamente[hidden]{display:none!important}
 .pix{text-align:center}
 .pix h3{margin:0 0 8px;font-size:24px}
 .pix img{margin:12px auto;width:220px;height:220px;background:#fff;padding:8px;border-radius:12px}
