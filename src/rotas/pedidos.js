@@ -114,7 +114,10 @@ router.post('/pedidos/:id/cartao', limiteCartao, async (req, res, next) => {
       VALUES ($1,$2,$3,$4,$5,NULL,NULL,$6)
       ON CONFLICT (mp_payment_id) DO UPDATE SET status=EXCLUDED.status`,
     [pedido.id, String(pagamento.id), String(order.id), pagamento.status || order.status || 'pending', pedido.total_centavos, Date.now()]);
-    await db.query(`UPDATE pagamentos SET metodo_pagamento=$1 WHERE pedido_id=$2`, [dados.payment_type_id === 'debit_card' ? 'debit_card' : 'credit_card', pedido.id]);
+    await db.query(`UPDATE pagamentos SET metodo_pagamento=$1 WHERE mp_payment_id=$2`, [
+      dados.payment_type_id === 'debit_card' ? 'debit_card' : 'credit_card',
+      String(pagamento.id)
+    ]);
     await db.query(`UPDATE tentativas_cobranca SET estado='concluida',lease_ate=NULL,ultimo_erro=NULL,atualizado_em=$1 WHERE pedido_id=$2`, [Date.now(), pedido.id]);
 
     // O webhook continua sendo a fonte oficial; esta consulta reduz a latência da confirmação.

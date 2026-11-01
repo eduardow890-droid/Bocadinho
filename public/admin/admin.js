@@ -229,6 +229,21 @@
     card.append(el('p', `Total: ${dinheiro(pedido.total_centavos)}`, 'order-total'));
 
     if (pedido.obs) card.append(el('p', `Observação: ${pedido.obs}`, 'order-note'));
+    if (pedido.status === 'pendente') {
+      const pagamentoRecusado = pedido.metodo_pagamento && ['credit_card', 'debit_card'].includes(pedido.metodo_pagamento)
+        && pedido.status_pagamento === 'rejected';
+      const statusPagamentoTexto = {
+        pending: 'pendente', in_process: 'em análise', processing: 'em processamento',
+        action_required: 'aguardando ação', rejected: 'recusado', approved: 'aprovado'
+      }[pedido.status_pagamento] || pedido.status_pagamento;
+      const detalhePagamento = statusPagamentoTexto
+        ? ` Status do pagamento: ${statusPagamentoTexto}.`
+        : '';
+      const aviso = pagamentoRecusado
+        ? `Atenção: o Mercado Pago recusou a tentativa de cartão. O pedido continua sem confirmação; não inicie o preparo.${detalhePagamento}`
+        : `Atenção: o pagamento ainda não foi confirmado. Aguarde a atualização ou confira no Mercado Pago; não inicie o preparo.${detalhePagamento}`;
+      card.append(el('p', aviso, 'warning'));
+    }
     if (pedido.status === 'revisar') card.append(el('p', 'Atenção: pagamento fora das condições esperadas ou recebido após expiração. Não avance sem conferência manual.', 'warning'));
     if (pedido.status === 'estornado') card.append(el('p', 'Atenção: este pagamento foi estornado. Não avance o pedido.', 'warning'));
 

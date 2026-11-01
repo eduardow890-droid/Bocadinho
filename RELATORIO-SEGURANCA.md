@@ -1,6 +1,17 @@
 # Relatório de segurança e persistência — Bocadinho
 
-Data da revisão: 06/10/2026
+Data da revisão: 01/11/2026
+
+## Decisões de operação registradas
+
+- Controlador: Wagner Eduardo de Oliveira Henrique, MEI, Bocadinho, CNPJ 69.680.847/0001-60.
+- Domínio inicial: `https://bocadinho.onrender.com`.
+- Admin: IP permitido atualizado quando necessário, sempre combinado com token administrativo.
+- Logs operacionais: retenção prevista de até 90 dias, salvo investigação ou obrigação legal.
+- RTO/RPO iniciais: 24 horas / 24 horas.
+- Telegram: somente avisos operacionais de pedidos.
+- Reembolsos: procedimento manual no Mercado Pago.
+- Alergias: não coletar pelo checkout; orientar contato pelo WhatsApp.
 
 ## Resumo
 

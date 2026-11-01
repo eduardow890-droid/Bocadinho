@@ -50,6 +50,8 @@ const STATUS_PEDIDO={
 	revisar:{titulo:'Pedido em análise',detalhe:'A loja precisa verificar este pagamento. Entre em contato pelo WhatsApp.',etapa:-1}
 };
 const STATUS_FINAIS=new Set(['concluido','cancelado','expirado','estornado','revisar']);
+const STATUS_PAGAMENTO_EM_ANALISE=new Set(['pending','in_process','processing','action_required']);
+const METODOS_CARTAO=new Set(['credit_card','debit_card']);
 
 /* ---------- permanência: carrinho e rascunho do checkout (somente neste aparelho) ---------- */
 function salvarCarrinho(){
@@ -407,10 +409,25 @@ function mostrarCartao(d,tokenAcesso){
 }
 
 function mostrarStatusPagamento(d,tokenAcesso){
+	pedidoAtual={id:d.id,token:tokenAcesso||lerPedidoSalvo()?.token,fim:Date.now()+d.restante_ms};
+	if(d.status==='pendente'&&METODOS_CARTAO.has(d.metodo_pagamento)&&d.status_pagamento==='rejected'){
+		exibirRecusaCartao();
+		iniciarPolling();
+		$('cartao-pagamento').scrollIntoView({behavior:reduzirMovimento?'auto':'smooth',block:'center'});
+		return;
+	}
 	$('cartao-pagamento').hidden=true;
 	$('pix').hidden=false;
-	$('pix-corpo').hidden=true;
 	mostrarPix(d,tokenAcesso);
+}
+
+function exibirRecusaCartao(){
+	$('dados').hidden=true;
+	$('cart-summary').hidden=true;
+	$('checkout-progress').hidden=true;
+	$('pix').hidden=true;
+	$('cartao-pagamento').hidden=false;
+	$('cartao-erro').textContent='O Mercado Pago não aprovou esta tentativa. Confira os dados ou tente outro cartão. O pedido ainda não foi confirmado. Se o problema continuar, fale com a loja pelo WhatsApp.';
 }
 
 /* ---------- painel do Pix ---------- */
@@ -437,21 +454,34 @@ function exibirDadosPix(d){
 
 function mostrarPix(d,tokenAcesso){
 	pedidoAtual={id:d.id,token:tokenAcesso||lerPedidoSalvo()?.token,fim:Date.now()+d.restante_ms};
+	if(d.status==='pendente'&&METODOS_CARTAO.has(d.metodo_pagamento)&&d.status_pagamento==='rejected'){
+		exibirRecusaCartao();
+		iniciarPolling();
+		$('cartao-pagamento').scrollIntoView({behavior:reduzirMovimento?'auto':'smooth',block:'center'});
+		return;
+	}
 	$('dados').hidden=true;
 	$('cart-summary').hidden=true;
 	$('checkout-progress').hidden=true;
 	$('pix').hidden=false;
 	$('pix-corpo').hidden=false;
+	const pagamentoCartao=METODOS_CARTAO.has(d.metodo_pagamento);
+	$('pix-titulo').textContent=pagamentoCartao||d.status!=='pendente'?'Acompanhe seu pedido':'Pague com Pix';
 	$('pix-novo').hidden=true;
 	exibirDadosPix(d);
 	atualizarStatus(d.status);
-	if(d.status==='pendente'&&!d.pix){
+	if(d.status==='pendente'&&pagamentoCartao){
+		const aguardandoAnalise=STATUS_PAGAMENTO_EM_ANALISE.has(d.status_pagamento);
+		$('pix-status').textContent=aguardandoAnalise?'Pagamento em análise':'Aguardando confirmação do pagamento';
+		$('pix-status-detail').textContent='O Mercado Pago ainda não confirmou este pagamento. O pedido só será confirmado após a aprovação; não faça outra cobrança. Esta tela será atualizada automaticamente.';
+		$('pix-corpo').hidden=true;
+	}else if(d.status==='pendente'&&!d.pix){
 		$('pix-status').textContent='Preparando seu Pix';
 		$('pix-status-detail').textContent='Estamos finalizando a cobrança. Esta tela será atualizada automaticamente; não faça outro pedido.';
 	}
-	$('pix-cancelar').hidden=d.status!=='pendente';
+	$('pix-cancelar').hidden=d.status!=='pendente'||pagamentoCartao;
 	$('pix-cancelar').disabled=false;
-	if(d.status==='pendente')iniciarRelogio();
+	if(d.status==='pendente'&&!pagamentoCartao)iniciarRelogio();
 	else $('pix-corpo').hidden=true;
 	iniciarPolling();
 	$('pix').scrollIntoView({behavior:reduzirMovimento?'auto':'smooth',block:'center'});
@@ -496,13 +526,34 @@ async function consultarStatus(){
 		atualizarStatus(d.status);
 		if(d.status!=='pendente'&&window.Conta)window.Conta.atualizar();
 		if(d.status==='pendente'){
-			if(d.pix)exibirDadosPix(d);
-			else{
+			if(METODOS_CARTAO.has(d.metodo_pagamento)&&d.status_pagamento==='rejected'){
+				exibirRecusaCartao();
+			}else if(METODOS_CARTAO.has(d.metodo_pagamento)){
+				$('pix').hidden=false;
+				$('cartao-pagamento').hidden=true;
+				$('pix-titulo').textContent='Acompanhe seu pedido';
+				const aguardandoAnalise=STATUS_PAGAMENTO_EM_ANALISE.has(d.status_pagamento);
+				$('pix-status').textContent=aguardandoAnalise?'Pagamento em análise':'Aguardando confirmação do pagamento';
+				$('pix-status-detail').textContent='O Mercado Pago ainda não confirmou este pagamento. O pedido só será confirmado após a aprovação; não faça outra cobrança. Esta tela será atualizada automaticamente.';
+				$('pix-corpo').hidden=true;
+			}else if(d.pix){
+				$('pix').hidden=false;
+				$('cartao-pagamento').hidden=true;
+				$('pix-titulo').textContent='Pague com Pix';
+				exibirDadosPix(d);
+				$('pix-status').textContent='Aguardando pagamento';
+				$('pix-status-detail').textContent='Escaneie o QR Code ou use o Pix copia e cola.';
+			}else{
+				$('pix').hidden=false;
+				$('cartao-pagamento').hidden=true;
 				$('pix-status').textContent='Preparando seu Pix';
 				$('pix-status-detail').textContent='Estamos finalizando a cobrança. Esta tela será atualizada automaticamente; não faça outro pedido.';
 			}
 			return;
 		}
+		$('cartao-pagamento').hidden=true;
+		$('pix').hidden=false;
+		$('pix-titulo').textContent='Acompanhe seu pedido';
 		$('pix-corpo').hidden=true;
 		$('pix-cancelar').hidden=true;
 		clearInterval(timerRelogio);

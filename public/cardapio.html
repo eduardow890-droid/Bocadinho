@@ -46,8 +46,8 @@
 <div id="endwrap"><fieldset class="endereco-fields"><legend>Endereço de entrega</legend><label for="rua">Rua *</label><input type="text" id="rua" autocomplete="address-line1" maxlength="120" placeholder="Nome da rua" required><div class="endereco-grid"><div><label for="numero">Número *</label><input type="text" id="numero" autocomplete="off" inputmode="text" maxlength="20" placeholder="123" required></div><div><label for="complemento">Complemento</label><input type="text" id="complemento" autocomplete="address-line2" maxlength="100" placeholder="Apto, casa"></div></div><label for="regiao">Bairro *</label><input type="text" id="regiao" autocomplete="address-level3" maxlength="80" placeholder="Ex.: Copacabana" required><label for="cidade">Cidade *</label><input type="text" id="cidade" autocomplete="address-level2" maxlength="80" placeholder="Ex.: Rio de Janeiro" required></fieldset></div>
 <p class="delivery-note" id="delivery-note">O envio é pago separadamente pelo cliente ao Uber Envios. O valor e o prazo são combinados pelo WhatsApp conforme o endereço.</p>
 <p class="retirada-ajuda" id="retirada-ajuda" hidden>Na retirada, não é necessário informar endereço. A loja enviará as instruções após a confirmação do pedido.</p>
-<label for="obs">Observação (opcional)</label><textarea id="obs" rows="3" maxlength="300" placeholder="Ex.: alergias, presente ou instruções importantes..."></textarea>
-<p class="aviso">Nossos produtos podem conter leite, glúten, ovos, amendoim e castanhas. Informe alergias ou restrições na observação; entre em contato com a loja para confirmar ingredientes.</p>
+<label for="obs">Observação (opcional)</label><textarea id="obs" rows="3" maxlength="300" placeholder="Ex.: presente ou instruções do pedido..."></textarea>
+<p class="aviso">Nossos produtos podem conter leite, glúten, ovos, amendoim e castanhas. Em caso de alergia ou restrição alimentar, não informe dados de saúde neste campo: fale com a loja pelo WhatsApp antes de concluir o pedido para confirmar os ingredientes.</p>
 <p class="aviso">Ao informar seus dados, consulte nossa <a href="/privacidade.html">Política de Privacidade</a>.</p>
 </div>
 <div class="step-actions step-actions-split"><button type="button" class="btn secondary-step" id="back-to-products">Voltar aos produtos</button><button type="button" class="btn" id="continue-to-review">Revisar pedido</button></div>
@@ -63,7 +63,7 @@
 </div>
 
 <div class="pix" id="pix" hidden>
-<h3>Pague com Pix</h3>
+<h3 id="pix-titulo">Pague com Pix</h3>
 <div id="pix-corpo">
 <p id="pix-valores" class="pix-amount">Valor do Pix: <b id="pix-total"></b></p>
 <img id="pix-qr" alt="QR Code para pagar este pedido Pix" width="220" height="220">

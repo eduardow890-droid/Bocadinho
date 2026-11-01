@@ -57,6 +57,8 @@ bocadinho-pagamentos/
 
 Status: `pendente → pago → em_preparo → enviado → concluido` (mais `expirado`, `cancelado`, `estornado`, `revisar`).
 
+No cartão, a aprovação confirma o pedido; estados pendentes/em processamento mostram ao cliente que o Mercado Pago ainda está analisando e não liberam o preparo. Uma recusa permite tentar outro cartão, enquanto o pedido continua em "Atenção" no admin até ser confirmado, cancelado ou expirar. No Pix, a tela informa separadamente quando o código ainda está sendo gerado.
+
 ## Como rodar (teste)
 
 1. Node 18+ instalado localmente. Em produção, prefira Node 22 LTS ou superior. Na pasta: `npm install`
@@ -121,10 +123,13 @@ GET /api/admin/resumo
 - [x] Implementar o canal opcional de notificação em `src/notificar.js`.
 - [ ] Configurar `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` no ambiente de produção.
 - [ ] Aplicar `supabase/rls.sql` no SQL Editor do Supabase.
-- Complete e revise a [política de privacidade](public/privacidade.html), incluindo identificação legal do controlador, tratamento de dados de alergias e prazos de retenção; defina também como emitir nota com seu contador.
+- [x] Atualizar a [política de privacidade](public/privacidade.html) com a identificação legal informada, canal de privacidade, retenção operacional de logs e orientação para não enviar alergias pelo checkout.
+- [ ] Definir com o contador os documentos fiscais e os prazos legais de retenção de pedidos e pagamentos.
 - Confirme na documentação do Mercado Pago as taxas, o prazo mínimo de expiração do Pix e os requisitos da conta.
 
 Consulte o [relatório de segurança e persistência](RELATORIO-SEGURANCA.md) antes do deploy.
+
+Consulte também o [manual de produção](MANUAL-PRODUCAO.md), que registra o responsável pelo tratamento, o acesso administrativo por IP e token, os objetivos de recuperação, a retenção operacional e o procedimento inicial de resposta a incidentes.
 
 ### Notificação gratuita no Telegram
 

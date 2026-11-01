@@ -114,7 +114,10 @@ router.patch('/produtos/:id/ativo', async (req, res, next) => {
 router.get('/pedidos', async (req, res, next) => {
  try {
   const status = String(req.query.status || '');
-  const sql = `SELECT * FROM pedidos ${status ? 'WHERE status=$1' : ''} ORDER BY criado_em DESC LIMIT 100`;
+  const sql = `SELECT p.*,
+    (SELECT pg.status FROM pagamentos pg WHERE pg.pedido_id=p.id ORDER BY pg.id DESC LIMIT 1) AS status_pagamento,
+    (SELECT pg.metodo_pagamento FROM pagamentos pg WHERE pg.pedido_id=p.id ORDER BY pg.id DESC LIMIT 1) AS metodo_pagamento
+    FROM pedidos p ${status ? 'WHERE p.status=$1' : ''} ORDER BY p.criado_em DESC LIMIT 100`;
   const pedidos = (await db.query(sql, status ? [status] : [])).rows;
   res.json(await Promise.all(pedidos.map(async p => ({ ...p, itens: (await db.query('SELECT nome,qtd,preco_unit_centavos FROM pedido_itens WHERE pedido_id=$1', [p.id])).rows }))));
  } catch (e) { next(e); }

@@ -88,14 +88,20 @@ async function obterItens(pedidoId) {
   const r = await db.query('SELECT nome, qtd, preco_unit_centavos FROM pedido_itens WHERE pedido_id=$1 ORDER BY id', [pedidoId]);
   return r.rows;
 }
-async function obterPagamento(pedidoId) { const r = await db.query('SELECT * FROM pagamentos WHERE pedido_id=$1', [pedidoId]); return r.rows[0]; }
+async function obterPagamento(pedidoId) {
+  const r = await db.query('SELECT * FROM pagamentos WHERE pedido_id=$1 ORDER BY id DESC LIMIT 1', [pedidoId]);
+  return r.rows[0];
+}
 
 async function visaoPublica(pedido) {
   const out = { id: pedido.id, status: pedido.status, total_centavos: pedido.total_centavos, restante_ms: Math.max(0, Number(pedido.expira_em) - Date.now()), brinde_fidelidade: Boolean(pedido.brinde_fidelidade) };
   if (pedido.status === 'pendente') {
     const pg = await obterPagamento(pedido.id);
-    if (pg?.qr_code) out.pix = { copiaECola: pg.qr_code, qrBase64: pg.qr_base64 };
-    else if (pg) out.metodo_pagamento = pg.metodo_pagamento || 'cartao';
+    if (pg) {
+      out.metodo_pagamento = pg.metodo_pagamento || 'pix';
+      out.status_pagamento = pg.status;
+      if (pg.qr_code) out.pix = { copiaECola: pg.qr_code, qrBase64: pg.qr_base64 };
+    }
     else out.pix_em_processamento = true;
   }
   return out;
