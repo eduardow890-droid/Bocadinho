@@ -110,18 +110,16 @@ router.post('/pedidos/:id/cartao', limiteCartao, async (req, res, next) => {
     if (!order.id || !pagamento?.id) throw new Error('Resposta do Mercado Pago sem transação de cartão.');
 
     await db.query(`INSERT INTO pagamentos
-      (pedido_id,mp_payment_id,mp_order_id,status,valor_centavos,qr_code,qr_base64,criado_em)
-      VALUES ($1,$2,$3,$4,$5,NULL,NULL,$6)
-      ON CONFLICT (mp_payment_id) DO UPDATE SET status=EXCLUDED.status`,
-    [pedido.id, String(pagamento.id), String(order.id), pagamento.status || order.status || 'pending', pedido.total_centavos, Date.now()]);
-    await db.query(`UPDATE pagamentos SET metodo_pagamento=$1 WHERE mp_payment_id=$2`, [
-      dados.payment_type_id === 'debit_card' ? 'debit_card' : 'credit_card',
-      String(pagamento.id)
-    ]);
+      (pedido_id,mp_payment_id,mp_order_id,status,valor_centavos,qr_code,qr_base64,criado_em,metodo_pagamento)
+      VALUES ($1,$2,$3,$4,$5,NULL,NULL,$6,$7)
+      ON CONFLICT (mp_payment_id) DO UPDATE
+        SET status=EXCLUDED.status,metodo_pagamento=EXCLUDED.metodo_pagamento`,
+    [pedido.id, String(pagamento.id), String(order.id), pagamento.status || order.status || 'pending',
+      pedido.total_centavos, Date.now(), dados.payment_type_id === 'debit_card' ? 'debit_card' : 'credit_card']);
     await db.query(`UPDATE tentativas_cobranca SET estado='concluida',lease_ate=NULL,ultimo_erro=NULL,atualizado_em=$1 WHERE pedido_id=$2`, [Date.now(), pedido.id]);
 
     // O webhook continua sendo a fonte oficial; esta consulta reduz a latência da confirmação.
-    await require('../pagamentos').processarPagamento(String(order.id));
+    if (order.status !== 'failed') await require('../pagamentos').processarPagamento(String(order.id));
     const atualizado = await svc.obterPedido(pedido.id);
     res.set('Cache-Control', 'no-store').json({ ...(await svc.visaoPublica(atualizado)), pagamento: 'cartao' });
   } catch (e) {
@@ -173,7 +171,9 @@ router.post('/pedidos/:id/cancelar', limiteCancelamento, async (req, res, next) 
     cancelamentoReservado = true;
 
     const pagamento = await svc.obterPagamento(pedido.id);
-    if (pagamento && !String(pagamento.mp_payment_id).startsWith('simulado-')) {
+    const pagamentoJaFinalizado = ['failed', 'rejected', 'cancelled', 'refunded', 'charged_back']
+      .includes(String(pagamento?.status || '').toLowerCase());
+    if (pagamento && !pagamentoJaFinalizado && !String(pagamento.mp_payment_id).startsWith('simulado-')) {
       if (pagamento.mp_order_id) {
         try {
           await mp.cancelarOrder(pagamento.mp_order_id);

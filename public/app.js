@@ -52,6 +52,7 @@ const STATUS_PEDIDO={
 const STATUS_FINAIS=new Set(['concluido','cancelado','expirado','estornado','revisar']);
 const STATUS_PAGAMENTO_EM_ANALISE=new Set(['pending','in_process','processing','action_required']);
 const METODOS_CARTAO=new Set(['credit_card','debit_card']);
+const STATUS_PAGAMENTO_RECUSADO=new Set(['failed','rejected']);
 
 /* ---------- permanência: carrinho e rascunho do checkout (somente neste aparelho) ---------- */
 function salvarCarrinho(){
@@ -410,7 +411,7 @@ function mostrarCartao(d,tokenAcesso){
 
 function mostrarStatusPagamento(d,tokenAcesso){
 	pedidoAtual={id:d.id,token:tokenAcesso||lerPedidoSalvo()?.token,fim:Date.now()+d.restante_ms};
-	if(d.status==='pendente'&&METODOS_CARTAO.has(d.metodo_pagamento)&&d.status_pagamento==='rejected'){
+	if(d.status==='pendente'&&METODOS_CARTAO.has(d.metodo_pagamento)&&STATUS_PAGAMENTO_RECUSADO.has(d.status_pagamento)){
 		exibirRecusaCartao();
 		iniciarPolling();
 		$('cartao-pagamento').scrollIntoView({behavior:reduzirMovimento?'auto':'smooth',block:'center'});
@@ -454,7 +455,7 @@ function exibirDadosPix(d){
 
 function mostrarPix(d,tokenAcesso){
 	pedidoAtual={id:d.id,token:tokenAcesso||lerPedidoSalvo()?.token,fim:Date.now()+d.restante_ms};
-	if(d.status==='pendente'&&METODOS_CARTAO.has(d.metodo_pagamento)&&d.status_pagamento==='rejected'){
+	if(d.status==='pendente'&&METODOS_CARTAO.has(d.metodo_pagamento)&&STATUS_PAGAMENTO_RECUSADO.has(d.status_pagamento)){
 		exibirRecusaCartao();
 		iniciarPolling();
 		$('cartao-pagamento').scrollIntoView({behavior:reduzirMovimento?'auto':'smooth',block:'center'});
@@ -526,7 +527,7 @@ async function consultarStatus(){
 		atualizarStatus(d.status);
 		if(d.status!=='pendente'&&window.Conta)window.Conta.atualizar();
 		if(d.status==='pendente'){
-			if(METODOS_CARTAO.has(d.metodo_pagamento)&&d.status_pagamento==='rejected'){
+			if(METODOS_CARTAO.has(d.metodo_pagamento)&&STATUS_PAGAMENTO_RECUSADO.has(d.status_pagamento)){
 				exibirRecusaCartao();
 			}else if(METODOS_CARTAO.has(d.metodo_pagamento)){
 				$('pix').hidden=false;

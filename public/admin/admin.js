@@ -231,10 +231,10 @@
     if (pedido.obs) card.append(el('p', `Observação: ${pedido.obs}`, 'order-note'));
     if (pedido.status === 'pendente') {
       const pagamentoRecusado = pedido.metodo_pagamento && ['credit_card', 'debit_card'].includes(pedido.metodo_pagamento)
-        && pedido.status_pagamento === 'rejected';
+        && ['failed', 'rejected'].includes(pedido.status_pagamento);
       const statusPagamentoTexto = {
         pending: 'pendente', in_process: 'em análise', processing: 'em processamento',
-        action_required: 'aguardando ação', rejected: 'recusado', approved: 'aprovado'
+        action_required: 'aguardando ação', rejected: 'recusado', failed: 'recusado', approved: 'aprovado'
       }[pedido.status_pagamento] || pedido.status_pagamento;
       const detalhePagamento = statusPagamentoTexto
         ? ` Status do pagamento: ${statusPagamentoTexto}.`

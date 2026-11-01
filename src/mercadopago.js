@@ -25,11 +25,31 @@ async function chamar(metodo, caminho, corpo, chaveIdempotencia, cabecalhos = {}
   });
   const json = await r.json().catch(() => ({}));
   if (!r.ok) {
-    const resumo = json?.errors?.map(x => x.code || x.message || x.type).filter(Boolean).join(', ')
-      || json?.error || json?.message || '';
+    const resumo = json?.errors?.map(x => x.code || x.type).filter(Boolean).join(', ')
+      || json?.error || '';
     const e = new Error(`Mercado Pago respondeu ${r.status}${resumo ? ` (${String(resumo).slice(0, 180)})` : ''}`);
     e.httpStatus = r.status;
-    e.detalhe = json;
+    e.detalhe = {
+      errors: Array.isArray(json?.errors) ? json.errors.map(x => ({
+        code: x.code,
+        type: x.type
+      })) : undefined,
+      data: json?.data ? {
+        id: json.data.id,
+        external_reference: json.data.external_reference,
+        status: json.data.status,
+        status_detail: json.data.status_detail,
+        transactions: {
+          payments: (json.data.transactions?.payments || []).map(p => ({
+            id: p.id,
+            status: p.status,
+            status_detail: p.status_detail,
+            amount: p.amount,
+            payment_method: p.payment_method
+          }))
+        }
+      } : undefined
+    };
     throw e;
   }
   return json;
@@ -59,6 +79,15 @@ function dadosDoPagador(cliente, identificacao) {
       'payer.registration_date': new Date(Number(cliente.criadoEm)).toISOString()
     } : undefined
   };
+}
+
+function falhaFinalCartao(erro, pedidoId) {
+  const order = erro?.detalhe?.data;
+  const pagamento = order?.transactions?.payments?.[0];
+  if (erro?.httpStatus !== 402 || order?.status !== 'failed' ||
+      String(order.external_reference || '') !== String(pedidoId) ||
+      !order.id || !pagamento?.id) return null;
+  return order;
 }
 
 /** Cria uma order Pix pelo fluxo de sandbox da Orders API. */
@@ -110,27 +139,33 @@ async function criarCartao({ pedido, cliente, itens, dados, deviceId, chaveIdemp
   const tipo = dados.payment_type_id === 'debit_card' ? 'debit_card' : 'credit_card';
   const amount = (pedido.total_centavos / 100).toFixed(2);
   const dadosPagador = dadosDoPagador(cliente, dados.payer?.identification);
-  return chamar('POST', '/v1/orders', {
-    type: 'online',
-    processing_mode: 'automatic',
-    total_amount: amount,
-    external_reference: pedido.id,
-    config: { statement_descriptor: cfg.mpStatementDescriptor },
-    payer: dadosPagador.pagador,
-    ...(dadosPagador.informacoesAdicionais ? { additional_info: dadosPagador.informacoesAdicionais } : {}),
-    items: itensDaOrder(itens),
-    transactions: {
-      payments: [{
-        amount,
-        payment_method: {
-          id: dados.payment_method_id,
-          type: tipo,
-          token: dados.token,
-          installments: Number(dados.installments) || 1
-        }
-      }]
-    }
-  }, chaveIdempotencia, deviceId ? { 'X-meli-session-id': deviceId } : {});
+  try {
+    return await chamar('POST', '/v1/orders', {
+      type: 'online',
+      processing_mode: 'automatic',
+      total_amount: amount,
+      external_reference: pedido.id,
+      config: { statement_descriptor: cfg.mpStatementDescriptor },
+      payer: dadosPagador.pagador,
+      ...(dadosPagador.informacoesAdicionais ? { additional_info: dadosPagador.informacoesAdicionais } : {}),
+      items: itensDaOrder(itens),
+      transactions: {
+        payments: [{
+          amount,
+          payment_method: {
+            id: dados.payment_method_id,
+            type: tipo,
+            token: dados.token,
+            installments: Number(dados.installments) || 1
+          }
+        }]
+      }
+    }, chaveIdempotencia, deviceId ? { 'X-meli-session-id': deviceId } : {});
+  } catch (e) {
+    const falha = falhaFinalCartao(e, pedido.id);
+    if (falha) return falha;
+    throw e;
+  }
 }
 
 const consultarOrder = id => chamar('GET', `/v1/orders/${encodeURIComponent(id)}`);
@@ -179,4 +214,4 @@ function assinaturaValida(req) {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
-module.exports = { criarPix, criarCartao, consultarOrder, cancelarOrder, consultar, cancelar, assinaturaValida };
+module.exports = { criarPix, criarCartao, consultarOrder, cancelarOrder, consultar, cancelar, assinaturaValida, falhaFinalCartao };
