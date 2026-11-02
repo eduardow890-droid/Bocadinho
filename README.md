@@ -44,7 +44,7 @@ bocadinho-pagamentos/
 
 - `/` (início), `/cardapio.html` (cardápio, checkout e Pix) e `/conta.html` (login, cadastro, cartão fidelidade). O servidor também aceita `/cardapio` e `/conta`.
 - `comum.js` (menu, sidebar "Minha conta", contador do carrinho, aviso de pedido em andamento) carrega em todas as páginas; `app.js` só no cardápio; `conta.js` só na conta.
-- Persistência no navegador: `bocadinho_carrinho` (ids e quantidades), `bocadinho_rascunho` (dados do checkout, 7 dias) e `bocadinho_pedido` (Pix em andamento). Rascunho e carrinho são apagados quando o pedido sai de "pendente". Nenhuma senha ou token fica no navegador.
+- Persistência no navegador: `bocadinho_carrinho` (ids e quantidades), `bocadinho_rascunho` (dados do checkout, 7 dias) e `bocadinho_pedido` (id e token de acompanhamento). O token de acompanhamento fica no `localStorage` deste aparelho até o pedido terminar; o servidor armazena somente o hash por até 90 dias. Senhas não são armazenadas no navegador.
 - Admin: aba "Clientes cadastrados" (`/admin`) com `GET /api/admin/clientes/resumo`, `GET /api/admin/clientes?busca=&pagina=&limite=` e `GET /api/admin/clientes/:id/pedidos`. Mostra total, novos (7/30 dias), pedidos, carimbos e dados de contato; nunca retorna senha.
 
 ## Fluxo

@@ -83,7 +83,8 @@ function salvarRascunho(){
 function restaurarRascunho(){
 	try{
 		const d=JSON.parse(localStorage.getItem(CHAVE_RASCUNHO));
-		if(!d||d.v!==1||Date.now()-d.t>PRAZO_RASCUNHO_MS)return;
+		if(!d||d.v!==1)return;
+		if(Date.now()-d.t>PRAZO_RASCUNHO_MS){localStorage.removeItem(CHAVE_RASCUNHO);return}
 		CAMPOS_RASCUNHO.forEach(c=>{if(typeof d[c]==='string'&&d[c])$(c).value=d[c].slice(0,300)});
 		const r=document.querySelector('input[name=tipo][value="'+(d.tipo==='retirada'?'retirada':'entrega')+'"]');
 		if(r)r.checked=true;
