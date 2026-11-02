@@ -21,7 +21,32 @@ Este manual registra as decisões mínimas para publicar e operar a aplicação 
 - Node.js: versão LTS mantida, preferencialmente 22 ou superior.
 - Reembolso: procedimento manual no painel do Mercado Pago.
 - Telegram: somente avisos operacionais de novos pedidos; não inserir dados pessoais desnecessários nas mensagens.
-- Situação dos pagamentos: credenciais reais desativadas durante a homologação, conforme informado pela equipe.
+- Situação dos pagamentos: a equipe confirmou que a configuração de produção foi conferida e que o teste controlado de Pix, webhook e cancelamento/reembolso foi concluído.
+- Regiões informadas pela equipe: Render Oregon; Supabase us-east-1.
+- Política de compra: aprovada pela equipe, publicada em `public/termos.html` e vinculada aos rodapés do site e ao checkout.
+
+## Liberação para clientes — estado informado em 2026-11-01
+
+A equipe confirmou que verificou e considera prontos os itens operacionais da lista de liberação:
+
+- produção está no deploy revisado, com política de privacidade e aviso do checkout atualizados;
+- credenciais de produção e segredo do webhook estão configurados no servidor, fora do Git e do frontend;
+- o ciclo controlado Pix/webhook foi testado, incluindo confirmação única, estados pendentes/recusados e tratamento de notificações repetidas;
+- cancelamento/reembolso do teste foi conferido no Mercado Pago e no pedido;
+- checkout, retirada, entrega, valores, mensagens, acompanhamento e uso em celular foram verificados;
+- acesso administrativo por IP e token foi testado, incluindo bloqueio de acessos não autorizados;
+- Wagner e Tallyta farão o monitoramento diário de pagamentos, webhooks, erros e imagens; Wagner autoriza a pausa da operação.
+
+Esta confirmação registra o estado relatado pela equipe; não é uma verificação independente do deploy, dos painéis dos fornecedores ou das transações. Posteriormente, a equipe informou que os canais de privacidade foram testados e que Wagner recebe e atende os contatos. Wagner e Tallyta farão o monitoramento diário; Wagner autoriza a pausa, mas o critério operacional para interromper pagamentos ainda precisa ser definido. A liberação operacional não elimina os riscos aceitos abaixo: ainda não há backup externo nem restauração testada, RTO/RPO não são garantias, e a retenção de logs do Render Hobby é de 7 dias sem cópia externa.
+
+## Decisões e pendências informadas em 2026-11-01
+
+- Região: a equipe informou Render Oregon e Supabase us-east-1. A política foi atualizada com esses dados informados; confirmar nos painéis se o banco e o Storage estão efetivamente na região indicada.
+- Retenção: a equipe pretende manter pedidos e pagamentos por até 2 anos, sujeito a mudança. Não há expurgo automático implementado; o fim do prazo exige definir e executar o descarte ou documentar a retenção por obrigação aplicável.
+- Canal de privacidade: e-mail e WhatsApp testados; Wagner recebe e atende solicitações.
+- Monitoramento inicial: Wagner e Tallyta conferem diariamente pagamentos, webhooks, erros e imagens. Wagner autoriza a pausa da operação; critério operacional para pausar ainda deve ser definido.
+- Revisão das pendências: 2026-12-01.
+- Termos de compra: aprovados pela equipe e publicados em `public/termos.html`; links adicionados ao site e ao checkout em 2026-11-01.
 
 ## Homologação — estado informado em 2026-11-01
 
@@ -92,9 +117,9 @@ Consulta somente de leitura executada no PostgreSQL/Supabase. Os resultados most
 - Logs do Render Hobby: retenção documentada de 7 dias. Como o serviço é recente, ainda não há histórico local para observar o descarte, mas o limite aplicável do plano é conhecido.
 - Backups Supabase: nenhum backup disponível no plano gratuito informado; backup externo e restauração não implementados.
 
-Conclusão: não há evidência suficiente de expurgo automático de pedidos, pagamentos, eventos de webhook ou tokens expirados. Não inferir um prazo de retenção pelas datas mais antigas encontradas; definir os prazos aplicáveis e implementar/verificar a exclusão ou anonimização correspondente. Não apagar registros de pedidos ou pagamentos sem avaliar obrigações legais e exercício regular de direitos.
+Conclusão: não há evidência suficiente de expurgo automático de pedidos, pagamentos, eventos de webhook ou tokens expirados. A operação informou depois a intenção de reter pedidos e pagamentos por até 2 anos, sujeita a revisão; esse prazo ainda não está automatizado. Não inferir expurgo pelas datas mais antigas encontradas. Implementar/verificar exclusão ou anonimização ao fim do prazo e não apagar registros sem avaliar obrigações legais e exercício regular de direitos.
 
-Decisão operacional informada em 2026-11-01: manter pedidos e pagamentos armazenados por enquanto e rever os prazos posteriormente com orientação contábil. Isso não configura um prazo de retenção nem uma regra automática de descarte.
+Decisão operacional informada em 2026-11-01: manter pedidos e pagamentos por até 2 anos, sujeito a mudança. A equipe pretende rever a decisão até 2026-12-01. Isso ainda não configura uma regra automática de descarte.
 
 ## Backup e restauração
 
@@ -128,4 +153,4 @@ Em caso de acesso indevido, vazamento, perda do banco ou exposição de token:
 
 ## Critério de liberação
 
-Os testes de cartão `CALL`, `OTHE`, `CONT` e `APRO`, funcionamento do bucket/fotos e a visualização de atenção no admin foram relatados como concluídos em homologação. Antes de ativar pagamentos reais, confirmar que o deploy em homologação corresponde ao código revisado, testar o ciclo Pix e webhook no ambiente final, revisar as credenciais de produção separadas das de teste e registrar a autorização de Wagner. A operação decidiu aceitar provisoriamente o risco de não haver backup; backup e restauração continuam sem implementação, e RTO/RPO não são garantias. A retenção de logs do Render e a destinação de pedidos/pagamentos ainda precisam ser definidas ou comprovadas.
+Os testes de cartão `CALL`, `OTHE`, `CONT` e `APRO`, funcionamento do bucket/fotos e a visualização de atenção no admin foram relatados como concluídos em homologação. Em 2026-11-01, a equipe também informou ter concluído as verificações de produção e estar pronta para a abertura ampla. A decisão de abrir ao público cabe ao controlador. A operação aceita provisoriamente o risco de não haver backup externo; backup e restauração continuam sem implementação, e RTO/RPO não são garantias. A retenção de logs do Render Hobby é de 7 dias, sem cópia externa. Permanecem pendentes a definição de critérios de pausa, a confirmação das regiões nos painéis e a avaliação de expurgo correspondente ao prazo de retenção de até 2 anos informado pela equipe.

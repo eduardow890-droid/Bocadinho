@@ -62,19 +62,19 @@
         <h2>4. Com quem os dados podem ser compartilhados</h2>
         <ul>
           <li><strong>Mercado Pago:</strong> recebe os dados necessários para processar e confirmar Pix ou cartão, incluindo primeiro nome, e-mail, telefone, valor, referência do pedido, identificador antifraude, token seguro e dados da transação. O Mercado Pago também trata dados conforme seus próprios termos e avisos de privacidade.</li>
-          <li><strong>Render:</strong> hospeda a aplicação e processa dados técnicos e registros operacionais. No plano Hobby, a retenção documentada dos logs é de 7 dias; a loja não mantém cópia externa desses logs neste momento.</li>
-          <li><strong>Supabase:</strong> fornece o PostgreSQL usado pela aplicação e o Storage do bucket público de imagens dos produtos. As imagens do catálogo podem ser acessadas publicamente pelo site; não é um espaço para fotos enviadas por clientes. O projeto não tem backup externo implementado nem restauração testada. A região do banco e do Storage deve ser conferida na configuração da conta.</li>
+          <li><strong>Render:</strong> hospeda a aplicação na região Oregon, Estados Unidos, conforme informação da equipe, e processa dados técnicos e registros operacionais. No plano Hobby, a retenção documentada dos logs é de 7 dias; a loja não mantém cópia externa desses logs neste momento.</li>
+          <li><strong>Supabase:</strong> fornece o PostgreSQL e o Storage do bucket público de imagens dos produtos, na região us-east-1, conforme informação da equipe. As imagens do catálogo podem ser acessadas publicamente pelo site; não é um espaço para fotos enviadas por clientes. O projeto não tem backup externo implementado nem restauração testada.</li>
           <li><strong>Google Fonts:</strong> o site carrega a fonte Outfit de servidores do Google. Ao abrir a página, o navegador se conecta ao Google e pode transmitir dados técnicos da conexão, como endereço IP e informações do navegador.</li>
           <li><strong>WhatsApp, Instagram e e-mail:</strong> se você escolher esses canais, os dados que enviar serão tratados também pelos respectivos provedores. O painel da loja pode abrir o WhatsApp com o telefone, primeiro nome e referência curta do pedido para permitir o contato.</li>
           <li><strong>Telegram:</strong> se estiver configurado no servidor, recebe aviso operacional quando um pedido é confirmado como pago. O aviso contém código curto do pedido, nome do cliente, total e modalidade de entrega ou retirada; não contém endereço, telefone nem dados de cartão.</li>
           <li><strong>Entrega:</strong> o site não tem integração automática com o Uber Envios. Caso a loja compartilhe dados com um entregador ou serviço de entrega para realizar a entrega combinada, deve compartilhar apenas o necessário e informar o cliente sobre esse uso.</li>
         </ul>
-        <p>Os serviços externos também aplicam seus próprios termos e avisos de privacidade e podem processar dados fora do Brasil. A localização/região efetiva das instâncias do Render e Supabase ainda deve ser confirmada nas respectivas contas. Os links para WhatsApp e Instagram só compartilham dados se você optar por usá-los; ao carregar a fonte Google Fonts, o navegador se conecta ao Google e transmite dados técnicos da conexão, como IP e informações do navegador.</p>
+        <p>Render e Supabase armazenam/processam dados fora do Brasil, nas regiões informadas acima. Esses serviços e os demais fornecedores externos também aplicam seus próprios termos e avisos de privacidade. Os links para WhatsApp e Instagram só compartilham dados se você optar por usá-los; ao carregar a fonte Google Fonts, o navegador se conecta ao Google e transmite dados técnicos da conexão, como IP e informações do navegador.</p>
       </section>
 
       <section>
         <h2>5. Armazenamento e prazo de retenção</h2>
-        <p>Pedidos, itens, pagamentos e eventos de webhook ficam no PostgreSQL do Supabase. A Bocadinho ainda não definiu um prazo final nem implementou expurgo automático desses registros; a decisão operacional atual é mantê-los enquanto os prazos forem avaliados com orientação contábil. A expiração do Pix, a expiração ou revogação do token de acompanhamento e a exclusão do navegador não apagam o registro do pedido ou do pagamento. Solicitações de exclusão são avaliadas individualmente, considerando obrigações legais e o exercício regular de direitos.</p>
+        <p>Pedidos, itens, pagamentos e eventos de webhook ficam no PostgreSQL do Supabase. A previsão atual da operação é manter esses registros por até 2 anos, sujeita a revisão. Esse prazo ainda não é aplicado por expurgo automático, portanto alguns registros podem permanecer por mais tempo até que a exclusão ou a manutenção seja avaliada e executada. A expiração do Pix, a expiração ou revogação do token de acompanhamento e a exclusão do navegador não apagam os registros do pedido ou do pagamento. A decisão considera obrigações legais e o exercício regular de direitos; solicitações de titulares são analisadas individualmente.</p>
         <p>O token de acompanhamento expira em até 90 dias. O banco guarda somente o hash do token, mas não há expurgo automático confirmado dos registros de token expirados. Sessões de conta expiram em 30 dias e o sistema executa a limpeza dos registros de sessão expirados periodicamente. Os logs mantidos pelo Render Hobby ficam disponíveis por até 7 dias; não há cópia externa para estender esse período. Esses prazos são os configurados ou documentados atualmente, não uma promessa de retenção adicional.</p>
         <p>O bucket de imagens contém fotos do catálogo. Quando uma imagem de produto é substituída ou o produto é atualizado, o sistema tenta remover a imagem anterior; a loja também pode solicitar a remoção de uma imagem do catálogo.</p>
       </section>
@@ -105,6 +105,6 @@
       <p class="privacy-return"><a href="/">Voltar à página inicial</a></p>
     </article>
   </main>
-  <footer class="privacy-footer">© <span id="ano">2026</span> Bocadinho · <a href="/">Início</a></footer>
+  <footer class="privacy-footer">© <span id="ano">2026</span> Bocadinho · <a href="/">Início</a> · <a href="/termos.html">Termos de Compra</a></footer>
 </body>
 </html>
